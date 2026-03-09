@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Little CEO Money</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-live="polite">
+      <header class="app-header">
+        <h1>💰 Little CEO Money</h1>
+      </header>
+
+      <section id="child-picker-screen" class="screen active" aria-label="Choose child screen">
+        <h2>Choose Child</h2>
+        <div id="child-profile-picker" class="child-picker" role="group" aria-label="Choose child profile"></div>
+      </section>
+
+      <section id="child-home-screen" class="screen" aria-label="Child dashboard screen">
+        <h2 id="child-home-title">Child Dashboard</h2>
+
+        <div class="goal-card" aria-label="Savings goal card">
+          <div class="goal-title-row">
+            <h3 id="goal-name"></h3>
+            <span id="goal-icon" class="goal-icon" aria-hidden="true"></span>
+          </div>
+
+          <p class="money-line">
+            <span id="saved-amount"></span> / <span id="target-amount"></span>
+          </p>
+
+          <div class="progress-track" aria-label="Goal progress">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+
+          <p id="progress-text" class="progress-text"></p>
+        </div>
+
+        <div class="transactions-card" aria-label="Recent transactions">
+          <h3>Recent Money</h3>
+          <ul id="transactions-list" class="transactions-list"></ul>
+        </div>
+
+        <button id="open-add-modal" class="big-button primary">➕ Add Money</button>
+        <button id="switch-profile" class="big-button secondary">👤 Change Profile</button>
+      </section>
+
+      <section id="celebration-screen" class="screen" aria-label="Goal Celebration screen">
+        <h2>🎉 You Did It! 🎉</h2>
+        <p id="celebration-message" class="celebration-message"></p>
+        <div class="celebration-emoji" aria-hidden="true">🎊 🥳 🎁 🌟</div>
+        <button id="celebration-done" class="big-button primary">🏠 Back to Dashboard</button>
+      </section>
+    </main>
+
+    <div id="add-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-label="Add money modal">
+        <h2>Add Money</h2>
+        <p class="helper">Type amount:</p>
+
+        <label for="amount-input" class="amount-label">💵 Amount</label>
+        <input id="amount-input" class="amount-input" type="number" min="1" step="1" inputmode="numeric" placeholder="5" />
+
+        <div class="modal-actions">
+          <button id="submit-amount" class="big-button primary">✅ Add</button>
+          <button id="close-add-modal" class="big-button secondary">✖ Close</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="state.js"></script>
+    <script src="ui-child-picker.js"></script>
+    <script src="ui-child-home.js"></script>
+    <script src="main.js"></script>
+  </body>
+</html>

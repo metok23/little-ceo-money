@@ -20,29 +20,22 @@
       <section id="child-home-screen" class="screen" aria-label="Child dashboard screen">
         <h2 id="child-home-title">Child Dashboard</h2>
 
-        <div class="goal-card" aria-label="Savings goal card">
-          <div class="goal-title-row">
-            <h3 id="goal-name"></h3>
-            <span id="goal-icon" class="goal-icon" aria-hidden="true"></span>
-          </div>
+        <div id="goals-list" class="goals-list" aria-label="Child goals"></div>
 
-          <p class="money-line">
-            <span id="saved-amount"></span> / <span id="target-amount"></span>
-          </p>
+        <button id="open-add-goal-modal" class="big-button secondary">🎯 Add Goal</button>
+        <button id="open-money-in-modal" class="big-button primary">➕ Add Money In</button>
+        <button id="open-money-out-modal" class="big-button danger">➖ Add Money Out</button>
 
-          <div class="progress-track" aria-label="Goal progress">
-            <div id="progress-fill" class="progress-fill"></div>
-          </div>
-
-          <p id="progress-text" class="progress-text"></p>
+        <div class="transactions-card" aria-label="Money In transactions">
+          <h3>Money In</h3>
+          <ul id="money-in-list" class="transactions-list"></ul>
         </div>
 
-        <div class="transactions-card" aria-label="Recent transactions">
-          <h3>Recent Money</h3>
-          <ul id="transactions-list" class="transactions-list"></ul>
+        <div class="transactions-card" aria-label="Money Out transactions">
+          <h3>Money Out</h3>
+          <ul id="money-out-list" class="transactions-list"></ul>
         </div>
 
-        <button id="open-add-modal" class="big-button primary">➕ Add Money</button>
         <button id="switch-profile" class="big-button secondary">👤 Change Profile</button>
       </section>
 
@@ -54,17 +47,37 @@
       </section>
     </main>
 
-    <div id="add-modal" class="modal-backdrop hidden" aria-hidden="true">
-      <section class="modal" role="dialog" aria-modal="true" aria-label="Add money modal">
-        <h2>Add Money</h2>
+    <div id="transaction-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-label="Money transaction modal">
+        <h2 id="transaction-modal-title">Add Money</h2>
         <p class="helper">Type amount:</p>
 
-        <label for="amount-input" class="amount-label">💵 Amount</label>
-        <input id="amount-input" class="amount-input" type="number" min="1" step="1" inputmode="numeric" placeholder="5" />
+        <label for="transaction-amount-input" class="amount-label">💵 Amount</label>
+        <input id="transaction-amount-input" class="amount-input" type="number" min="1" step="1" inputmode="numeric" placeholder="5" />
 
         <div class="modal-actions">
-          <button id="submit-amount" class="big-button primary">✅ Add</button>
-          <button id="close-add-modal" class="big-button secondary">✖ Close</button>
+          <button id="submit-transaction" class="big-button primary">✅ Save</button>
+          <button id="close-transaction-modal" class="big-button secondary">✖ Close</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="goal-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-label="Goal modal">
+        <h2 id="goal-modal-title">Add Goal</h2>
+
+        <label for="goal-name-input" class="amount-label">Name</label>
+        <input id="goal-name-input" class="amount-input small-input" type="text" maxlength="20" placeholder="Bike" />
+
+        <label for="goal-target-input" class="amount-label">Target</label>
+        <input id="goal-target-input" class="amount-input small-input" type="number" min="1" step="1" inputmode="numeric" placeholder="50" />
+
+        <label for="goal-icon-input" class="amount-label">Icon</label>
+        <input id="goal-icon-input" class="amount-input small-input" type="text" maxlength="2" placeholder="🚲" />
+
+        <div class="modal-actions">
+          <button id="submit-goal" class="big-button primary">✅ Save Goal</button>
+          <button id="close-goal-modal" class="big-button secondary">✖ Close</button>
         </div>
       </section>
     </div>

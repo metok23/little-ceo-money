@@ -1,154 +1,252 @@
 (function () {
   const childHomeTitle = document.getElementById("child-home-title");
-  const goalName = document.getElementById("goal-name");
-  const goalIcon = document.getElementById("goal-icon");
-  const savedAmount = document.getElementById("saved-amount");
-  const targetAmount = document.getElementById("target-amount");
-  const progressFill = document.getElementById("progress-fill");
-  const progressText = document.getElementById("progress-text");
-  const transactionsList = document.getElementById("transactions-list");
+  const goalsList = document.getElementById("goals-list");
+  const moneyInList = document.getElementById("money-in-list");
+  const moneyOutList = document.getElementById("money-out-list");
 
-  const addModal = document.getElementById("add-modal");
-  const amountInput = document.getElementById("amount-input");
-  const openAddModalButton = document.getElementById("open-add-modal");
-  const closeAddModalButton = document.getElementById("close-add-modal");
-  const submitAmountButton = document.getElementById("submit-amount");
   const switchProfileButton = document.getElementById("switch-profile");
+  const openAddGoalModalButton = document.getElementById("open-add-goal-modal");
+  const openMoneyInModalButton = document.getElementById("open-money-in-modal");
+  const openMoneyOutModalButton = document.getElementById("open-money-out-modal");
 
-  function openAddModal() {
-    amountInput.value = "";
-    addModal.classList.remove("hidden");
-    addModal.setAttribute("aria-hidden", "false");
-    amountInput.focus();
+  const transactionModal = document.getElementById("transaction-modal");
+  const transactionModalTitle = document.getElementById("transaction-modal-title");
+  const transactionAmountInput = document.getElementById("transaction-amount-input");
+  const submitTransactionButton = document.getElementById("submit-transaction");
+  const closeTransactionModalButton = document.getElementById("close-transaction-modal");
+
+  const goalModal = document.getElementById("goal-modal");
+  const goalModalTitle = document.getElementById("goal-modal-title");
+  const goalNameInput = document.getElementById("goal-name-input");
+  const goalTargetInput = document.getElementById("goal-target-input");
+  const goalIconInput = document.getElementById("goal-icon-input");
+  const submitGoalButton = document.getElementById("submit-goal");
+  const closeGoalModalButton = document.getElementById("close-goal-modal");
+
+  let selectedGoalId = null;
+  let transactionMode = "in";
+  let goalModalMode = "add";
+  let editingGoalId = null;
+
+  function sanitizeIntegerInput(input) {
+    input.value = input.value.replace(/\D/g, "");
   }
 
-  function closeAddModal() {
-    addModal.classList.add("hidden");
-    addModal.setAttribute("aria-hidden", "true");
-  }
-
-  function renderGoalForActiveChild() {
+  function openTransactionModal(type) {
     const activeChild = window.AppState.getActiveChild();
+    if (!activeChild) return;
+
+    const goals = window.AppState.getGoalsForChild(activeChild.id);
+    if (goals.length === 0) return;
+
+    transactionMode = type;
+    selectedGoalId = selectedGoalId && goals.some((goal) => goal.id === selectedGoalId) ? selectedGoalId : goals[0].id;
+    transactionModalTitle.textContent = type === "in" ? "Add Money In" : "Add Money Out";
+    transactionAmountInput.value = "";
+    transactionModal.classList.remove("hidden");
+    transactionModal.setAttribute("aria-hidden", "false");
+    transactionAmountInput.focus();
+  }
+
+  function closeTransactionModal() {
+    transactionModal.classList.add("hidden");
+    transactionModal.setAttribute("aria-hidden", "true");
+  }
+
+  function openGoalModalForAdd() {
+    goalModalMode = "add";
+    editingGoalId = null;
+    goalModalTitle.textContent = "Add Goal";
+    goalNameInput.value = "";
+    goalTargetInput.value = "";
+    goalIconInput.value = "🎯";
+    goalModal.classList.remove("hidden");
+    goalModal.setAttribute("aria-hidden", "false");
+    goalNameInput.focus();
+  }
+
+  function openGoalModalForEdit(goalId) {
+    const goal = window.AppState.getGoalById(goalId);
+    if (!goal) return;
+
+    goalModalMode = "edit";
+    editingGoalId = goalId;
+    goalModalTitle.textContent = "Edit Goal";
+    goalNameInput.value = goal.name;
+    goalTargetInput.value = String(goal.targetAmount);
+    goalIconInput.value = goal.icon || "🎯";
+    goalModal.classList.remove("hidden");
+    goalModal.setAttribute("aria-hidden", "false");
+    goalNameInput.focus();
+  }
+
+  function closeGoalModal() {
+    goalModal.classList.add("hidden");
+    goalModal.setAttribute("aria-hidden", "true");
+  }
+
+  function renderGoalsForActiveChild() {
+    const activeChild = window.AppState.getActiveChild();
+    goalsList.innerHTML = "";
 
     if (!activeChild) {
       childHomeTitle.textContent = "Choose a profile";
-      goalName.textContent = "No Child";
-      goalIcon.textContent = "🙂";
-      savedAmount.textContent = "$0";
-      targetAmount.textContent = "$0";
-      progressFill.style.width = "0%";
-      progressText.textContent = "No profile selected";
+      goalsList.innerHTML = '<p class="empty-hint">No profile selected</p>';
       return;
     }
 
     childHomeTitle.textContent = `${activeChild.avatar || "🙂"} ${activeChild.name}`;
+    const goals = window.AppState.getGoalsForChild(activeChild.id);
 
-    const goal = window.AppState.getPrimaryGoalForChild(activeChild.id);
-    if (!goal) {
-      goalName.textContent = "No Goal";
-      goalIcon.textContent = "🎯";
-      savedAmount.textContent = "$0";
-      targetAmount.textContent = "$0";
-      progressFill.style.width = "0%";
-      progressText.textContent = "0% done";
+    if (goals.length === 0) {
+      goalsList.innerHTML = '<p class="empty-hint">No goals yet. Tap Add Goal.</p>';
+      selectedGoalId = null;
       return;
     }
 
-    const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
-
-    goalName.textContent = goal.name;
-    goalIcon.textContent = goal.icon || "🎯";
-    savedAmount.textContent = `$${goal.currentAmount}`;
-    targetAmount.textContent = `$${goal.targetAmount}`;
-    progressFill.style.width = `${percent}%`;
-    progressText.textContent = `${Math.round(percent)}% done`;
-  }
-
-  function renderTransactionsForActiveChild() {
-    const activeChild = window.AppState.getActiveChild();
-    transactionsList.innerHTML = "";
-
-    if (!activeChild) {
-      const item = document.createElement("li");
-      item.className = "transaction-empty";
-      item.textContent = "No profile selected";
-      transactionsList.appendChild(item);
-      return;
+    if (!selectedGoalId || !goals.some((goal) => goal.id === selectedGoalId)) {
+      selectedGoalId = goals[0].id;
     }
 
-    const childTransactions = window.AppState.getTransactionsForChild(activeChild.id).slice(0, 5);
+    goals.forEach((goal) => {
+      const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
+      const card = document.createElement("article");
+      card.className = `goal-card ${goal.id === selectedGoalId ? "selected" : ""}`;
 
-    if (childTransactions.length === 0) {
-      const item = document.createElement("li");
-      item.className = "transaction-empty";
-      item.textContent = "No money added yet";
-      transactionsList.appendChild(item);
-      return;
-    }
+      card.innerHTML = `
+        <div class="goal-title-row">
+          <button class="goal-select" data-goal-id="${goal.id}">
+            <span>${goal.icon || "🎯"}</span>
+            <strong>${goal.name}</strong>
+          </button>
+          <details class="goal-menu">
+            <summary>⋯</summary>
+            <button type="button" class="goal-edit-btn" data-goal-id="${goal.id}">Edit goal</button>
+          </details>
+        </div>
+        <p class="money-line">$${goal.currentAmount} / $${goal.targetAmount}</p>
+        <div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div>
+        <p class="progress-text">${Math.round(percent)}% done</p>
+      `;
 
-    childTransactions.forEach((transaction) => {
-      const item = document.createElement("li");
-      item.className = "transaction-item";
-      item.textContent = `+ $${transaction.amount}`;
-      transactionsList.appendChild(item);
+      goalsList.appendChild(card);
+    });
+
+    goalsList.querySelectorAll(".goal-select").forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedGoalId = button.dataset.goalId;
+        renderChildHome();
+      });
+    });
+
+    goalsList.querySelectorAll(".goal-edit-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        openGoalModalForEdit(button.dataset.goalId);
+      });
     });
   }
 
+  function renderTransactionsForSelectedGoal() {
+    moneyInList.innerHTML = "";
+    moneyOutList.innerHTML = "";
+
+    if (!selectedGoalId) {
+      moneyInList.innerHTML = '<li class="transaction-empty">Pick a goal</li>';
+      moneyOutList.innerHTML = '<li class="transaction-empty">Pick a goal</li>';
+      return;
+    }
+
+    const moneyIn = window.AppState.getTransactionsForGoal(selectedGoalId, "in").slice(0, 5);
+    const moneyOut = window.AppState.getTransactionsForGoal(selectedGoalId, "out").slice(0, 5);
+
+    if (moneyIn.length === 0) {
+      moneyInList.innerHTML = '<li class="transaction-empty">No money in yet</li>';
+    } else {
+      moneyIn.forEach((transaction) => {
+        const item = document.createElement("li");
+        item.className = "transaction-item transaction-in";
+        item.textContent = `+ $${transaction.amount}`;
+        moneyInList.appendChild(item);
+      });
+    }
+
+    if (moneyOut.length === 0) {
+      moneyOutList.innerHTML = '<li class="transaction-empty">No money out yet</li>';
+    } else {
+      moneyOut.forEach((transaction) => {
+        const item = document.createElement("li");
+        item.className = "transaction-item transaction-out";
+        item.textContent = `- $${transaction.amount}`;
+        moneyOutList.appendChild(item);
+      });
+    }
+  }
+
   function renderChildHome() {
-    renderGoalForActiveChild();
-    renderTransactionsForActiveChild();
+    renderGoalsForActiveChild();
+    renderTransactionsForSelectedGoal();
   }
 
   function initChildHome({ onStateChange, onCelebrate }) {
-    openAddModalButton.addEventListener("click", openAddModal);
-    closeAddModalButton.addEventListener("click", closeAddModal);
     switchProfileButton.addEventListener("click", () => {
       window.AppState.setActiveChildId(null);
       window.AppState.setCurrentScreen("child-picker");
       onStateChange();
     });
 
-    amountInput.addEventListener("input", () => {
-      amountInput.value = amountInput.value.replace(/\D/g, "");
+    openAddGoalModalButton.addEventListener("click", openGoalModalForAdd);
+    openMoneyInModalButton.addEventListener("click", () => openTransactionModal("in"));
+    openMoneyOutModalButton.addEventListener("click", () => openTransactionModal("out"));
+
+    transactionAmountInput.addEventListener("input", () => sanitizeIntegerInput(transactionAmountInput));
+    goalTargetInput.addEventListener("input", () => sanitizeIntegerInput(goalTargetInput));
+
+    closeTransactionModalButton.addEventListener("click", closeTransactionModal);
+    closeGoalModalButton.addEventListener("click", closeGoalModal);
+
+    transactionModal.addEventListener("click", (event) => {
+      if (event.target === transactionModal) closeTransactionModal();
     });
 
-    amountInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        submitAmountButton.click();
-      }
+    goalModal.addEventListener("click", (event) => {
+      if (event.target === goalModal) closeGoalModal();
     });
 
-    addModal.addEventListener("click", (event) => {
-      if (event.target === addModal) closeAddModal();
-    });
+    submitTransactionButton.addEventListener("click", () => {
+      const raw = transactionAmountInput.value.trim();
+      if (!/^\d+$/.test(raw)) return;
 
-    submitAmountButton.addEventListener("click", () => {
-      const rawValue = amountInput.value.trim();
-      if (!/^\d+$/.test(rawValue)) {
-        amountInput.focus();
-        return;
-      }
+      const amount = Number(raw);
+      if (!Number.isInteger(amount) || amount <= 0 || !selectedGoalId) return;
 
-      const amount = Number(rawValue);
-      if (!Number.isInteger(amount) || amount <= 0) {
-        amountInput.focus();
-        return;
-      }
-
-      const result = window.AppState.addMoneyToActiveGoal(amount);
-      closeAddModal();
+      const result = window.AppState.addTransaction({ goalId: selectedGoalId, type: transactionMode, amount });
+      closeTransactionModal();
 
       if (result.justCompleted) {
         onCelebrate(result.childName, result.goalName);
         return;
       }
 
-      if (result.reason === "no-active-child") {
-        window.AppState.setCurrentScreen("child-picker");
-      } else {
-        window.AppState.setCurrentScreen("child-home");
+      onStateChange();
+    });
+
+    submitGoalButton.addEventListener("click", () => {
+      const name = goalNameInput.value.trim();
+      const targetRaw = goalTargetInput.value.trim();
+      const icon = goalIconInput.value.trim() || "🎯";
+
+      if (!name || !/^\d+$/.test(targetRaw)) return;
+      const targetAmount = Number(targetRaw);
+      if (!Number.isInteger(targetAmount) || targetAmount <= 0) return;
+
+      if (goalModalMode === "add") {
+        const goal = window.AppState.addGoalForActiveChild({ name, targetAmount, icon });
+        if (goal) selectedGoalId = goal.id;
+      } else if (editingGoalId) {
+        window.AppState.updateGoal(editingGoalId, { name, targetAmount, icon });
       }
 
+      closeGoalModal();
       onStateChange();
     });
   }

@@ -43,7 +43,9 @@
       transaction.id &&
       typeof transaction.goalId === "string" &&
       transaction.goalId &&
+      (transaction.type === "in" || transaction.type === "out") &&
       Number.isFinite(transaction.amount) &&
+      transaction.amount > 0 &&
       typeof transaction.date === "string" &&
       transaction.date
     );
@@ -106,42 +108,78 @@
     return state.goals.filter((goal) => goal.childId === childId);
   }
 
-  function getPrimaryGoalForChild(childId) {
-    return getGoalsForChild(childId)[0] || null;
+  function getGoalById(goalId) {
+    return state.goals.find((goal) => goal.id === goalId) || null;
   }
 
-  function getTransactionsForChild(childId) {
-    const goalIds = new Set(getGoalsForChild(childId).map((goal) => goal.id));
+  function getTransactionsForGoal(goalId, type) {
     return state.transactions
-      .filter((transaction) => goalIds.has(transaction.goalId))
+      .filter((transaction) => transaction.goalId === goalId && (!type || transaction.type === type))
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 
-  function addMoneyToActiveGoal(amount) {
+  function addGoalForActiveChild({ name, targetAmount, icon }) {
     const activeChild = getActiveChild();
-    if (!activeChild) return { added: false, reason: "no-active-child", justCompleted: false };
+    if (!activeChild) return null;
 
-    const goal = getPrimaryGoalForChild(activeChild.id);
-    if (!goal) return { added: false, reason: "no-goal", justCompleted: false };
+    const goal = {
+      id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      childId: activeChild.id,
+      name,
+      targetAmount,
+      currentAmount: 0,
+      icon: icon || "🎯",
+    };
+
+    state.goals.push(goal);
+    saveState();
+    return goal;
+  }
+
+  function updateGoal(goalId, updates) {
+    const goal = getGoalById(goalId);
+    if (!goal) return null;
+
+    if (typeof updates.name === "string" && updates.name.trim()) goal.name = updates.name.trim();
+    if (Number.isInteger(updates.targetAmount) && updates.targetAmount > 0) goal.targetAmount = updates.targetAmount;
+    if (typeof updates.icon === "string" && updates.icon.trim()) goal.icon = updates.icon.trim();
+
+    saveState();
+    return goal;
+  }
+
+  function addTransaction({ goalId, type, amount }) {
+    const goal = getGoalById(goalId);
+    if (!goal || !Number.isInteger(amount) || amount <= 0 || (type !== "in" && type !== "out")) {
+      return { ok: false, justCompleted: false };
+    }
 
     const wasCompleted = goal.currentAmount >= goal.targetAmount;
-    goal.currentAmount += amount;
+
+    if (type === "in") {
+      goal.currentAmount += amount;
+    } else {
+      goal.currentAmount = Math.max(0, goal.currentAmount - amount);
+    }
+
     const isCompleted = goal.currentAmount >= goal.targetAmount;
 
     state.transactions.push({
       id: `txn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      goalId: goal.id,
+      goalId,
+      type,
       amount,
       date: new Date().toISOString(),
     });
 
     saveState();
 
+    const child = state.children.find((item) => item.id === goal.childId);
+
     return {
-      added: true,
-      reason: null,
-      justCompleted: !wasCompleted && isCompleted,
-      childName: activeChild.name,
+      ok: true,
+      justCompleted: type === "in" && !wasCompleted && isCompleted,
+      childName: child ? child.name : "",
       goalName: goal.name,
     };
   }
@@ -152,8 +190,10 @@
     setActiveChildId,
     getActiveChild,
     getGoalsForChild,
-    getPrimaryGoalForChild,
-    getTransactionsForChild,
-    addMoneyToActiveGoal,
+    getGoalById,
+    getTransactionsForGoal,
+    addGoalForActiveChild,
+    updateGoal,
+    addTransaction,
   };
 })();

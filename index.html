@@ -12,10 +12,13 @@
         <h1>💰 Little CEO Money</h1>
       </header>
 
-      <section id="goals-screen" class="screen active" aria-label="My Goals screen">
-        <h2>My Goals</h2>
+      <section id="child-picker-screen" class="screen active" aria-label="Choose child screen">
+        <h2>Choose Child</h2>
+        <div id="child-profile-picker" class="child-picker" role="group" aria-label="Choose child profile"></div>
+      </section>
 
-        <div class="child-picker" role="group" aria-label="Choose child profile"></div>
+      <section id="child-home-screen" class="screen" aria-label="Child dashboard screen">
+        <h2 id="child-home-title">Child Dashboard</h2>
 
         <div class="goal-card" aria-label="Savings goal card">
           <div class="goal-title-row">
@@ -34,14 +37,20 @@
           <p id="progress-text" class="progress-text"></p>
         </div>
 
+        <div class="transactions-card" aria-label="Recent transactions">
+          <h3>Recent Money</h3>
+          <ul id="transactions-list" class="transactions-list"></ul>
+        </div>
+
         <button id="open-add-modal" class="big-button primary">➕ Add Money</button>
+        <button id="switch-profile" class="big-button secondary">👤 Change Profile</button>
       </section>
 
       <section id="celebration-screen" class="screen" aria-label="Goal Celebration screen">
         <h2>🎉 You Did It! 🎉</h2>
         <p id="celebration-message" class="celebration-message"></p>
         <div class="celebration-emoji" aria-hidden="true">🎊 🥳 🎁 🌟</div>
-        <button id="celebration-done" class="big-button primary">🏠 My Goals</button>
+        <button id="celebration-done" class="big-button primary">🏠 Back to Dashboard</button>
       </section>
     </main>
 
@@ -60,6 +69,9 @@
       </section>
     </div>
 
-    <script src="app.js"></script>
+    <script src="state.js"></script>
+    <script src="ui-child-picker.js"></script>
+    <script src="ui-child-home.js"></script>
+    <script src="main.js"></script>
   </body>
 </html>

@@ -58,6 +58,46 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
 }
 
 .goals-list { display: grid; gap: 12px; }
+
+.coins-card {
+  background: #f1fff5;
+  border: 2px solid #c8f1d8;
+  border-radius: 16px;
+  padding: 10px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.coins-label {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.coins-total {
+  margin: 6px 0 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #176440;
+}
+
+.parent-summary {
+  margin-bottom: 12px;
+  background: #f7f8ff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+}
+
+.parent-summary h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  color: #4b5a8b;
+}
+
+.parent-summary p {
+  margin: 4px 0;
+}
+
 .empty-hint { text-align: center; margin: 10px 0; }
 
 .goal-card {

@@ -118,6 +118,27 @@
       .sort((a, b) => new Date(b.date) - new Date(a.date));
   }
 
+  function getChildSummary(childId) {
+    const goals = getGoalsForChild(childId);
+    const goalIds = new Set(goals.map((goal) => goal.id));
+    const childTransactions = state.transactions.filter((transaction) => goalIds.has(transaction.goalId));
+
+    const totalBalance = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+    const totalMoneyIn = childTransactions
+      .filter((transaction) => transaction.type === "in")
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+    const totalMoneyOut = childTransactions
+      .filter((transaction) => transaction.type === "out")
+      .reduce((sum, transaction) => sum + transaction.amount, 0);
+
+    return {
+      totalBalance,
+      totalMoneyIn,
+      totalMoneyOut,
+      totalNetBalance: totalMoneyIn - totalMoneyOut,
+    };
+  }
+
   function addGoalForActiveChild({ name, targetAmount, icon }) {
     const activeChild = getActiveChild();
     if (!activeChild) return null;
@@ -192,6 +213,7 @@
     getGoalsForChild,
     getGoalById,
     getTransactionsForGoal,
+    getChildSummary,
     addGoalForActiveChild,
     updateGoal,
     addTransaction,

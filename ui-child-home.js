@@ -3,6 +3,10 @@
   const goalsList = document.getElementById("goals-list");
   const moneyInList = document.getElementById("money-in-list");
   const moneyOutList = document.getElementById("money-out-list");
+  const coinsTotal = document.getElementById("coins-total");
+  const parentNet = document.getElementById("parent-net");
+  const parentIn = document.getElementById("parent-in");
+  const parentOut = document.getElementById("parent-out");
 
   const switchProfileButton = document.getElementById("switch-profile");
   const openAddGoalModalButton = document.getElementById("open-add-goal-modal");
@@ -83,6 +87,24 @@
   function closeGoalModal() {
     goalModal.classList.add("hidden");
     goalModal.setAttribute("aria-hidden", "true");
+  }
+
+
+  function renderBalancesForActiveChild() {
+    const activeChild = window.AppState.getActiveChild();
+    if (!activeChild) {
+      coinsTotal.textContent = "$0";
+      parentNet.textContent = "$0";
+      parentIn.textContent = "$0";
+      parentOut.textContent = "$0";
+      return;
+    }
+
+    const summary = window.AppState.getChildSummary(activeChild.id);
+    coinsTotal.textContent = `$${summary.totalBalance}`;
+    parentNet.textContent = `$${summary.totalNetBalance}`;
+    parentIn.textContent = `$${summary.totalMoneyIn}`;
+    parentOut.textContent = `$${summary.totalMoneyOut}`;
   }
 
   function renderGoalsForActiveChild() {
@@ -183,6 +205,7 @@
   }
 
   function renderChildHome() {
+    renderBalancesForActiveChild();
     renderGoalsForActiveChild();
     renderTransactionsForSelectedGoal();
   }

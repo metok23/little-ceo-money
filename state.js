@@ -3,21 +3,89 @@
   const VALID_SCREENS = ["child-picker", "child-home", "celebration"];
 
   const defaultData = {
-    currentScreen: "child-picker",
-    activeChildId: null,
-    children: [
-      { id: "ava", name: "Ava", avatar: "🦄" },
-      { id: "leo", name: "Leo", avatar: "🦖" },
+    users: [
+      {
+        id: "user-parent-1",
+        name: "Parent",
+        email: "parent@example.com",
+        role: "parent",
+      },
+    ],
+    childProfiles: [
+      {
+        id: "ava",
+        userId: "user-parent-1",
+        childName: "Ava",
+        avatar: "🦄",
+        birthDate: "2018-01-01",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      },
+      {
+        id: "leo",
+        userId: "user-parent-1",
+        childName: "Leo",
+        avatar: "🦖",
+        birthDate: "2018-06-01",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      },
     ],
     goals: [
-      { id: "goal-ava-bike", childId: "ava", name: "Bike", icon: "🚲", targetAmount: 50, currentAmount: 0, status: "active" },
-      { id: "goal-leo-robot", childId: "leo", name: "Robot", icon: "🤖", targetAmount: 40, currentAmount: 0, status: "active" },
+      {
+        id: "goal-ava-bike",
+        childProfileId: "ava",
+        goalName: "Bike",
+        targetAmount: 50,
+        currentAmount: 0,
+        status: "active",
+        goalImage: "🚲",
+        startDate: "2024-01-01",
+        endDate: "",
+      },
+      {
+        id: "goal-leo-robot",
+        childProfileId: "leo",
+        goalName: "Robot",
+        targetAmount: 40,
+        currentAmount: 0,
+        status: "active",
+        goalImage: "🤖",
+        startDate: "2024-01-01",
+        endDate: "",
+      },
     ],
     transactions: [],
+    currentScreen: "child-picker",
+    activeChildProfileId: null,
   };
 
-  function isValidChild(child) {
-    return child && typeof child === "object" && typeof child.id === "string" && child.id && typeof child.name === "string" && child.name;
+  function isValidUser(user) {
+    return (
+      user &&
+      typeof user === "object" &&
+      typeof user.id === "string" &&
+      user.id &&
+      typeof user.name === "string" &&
+      user.name &&
+      typeof user.email === "string" &&
+      typeof user.role === "string" &&
+      user.role
+    );
+  }
+
+  function isValidChildProfile(childProfile) {
+    return (
+      childProfile &&
+      typeof childProfile === "object" &&
+      typeof childProfile.id === "string" &&
+      childProfile.id &&
+      typeof childProfile.userId === "string" &&
+      childProfile.userId &&
+      typeof childProfile.childName === "string" &&
+      childProfile.childName &&
+      typeof childProfile.avatar === "string" &&
+      typeof childProfile.birthDate === "string" &&
+      typeof childProfile.createdAt === "string"
+    );
   }
 
   function isValidGoal(goal) {
@@ -26,13 +94,16 @@
       typeof goal === "object" &&
       typeof goal.id === "string" &&
       goal.id &&
-      typeof goal.childId === "string" &&
-      goal.childId &&
-      typeof goal.name === "string" &&
-      goal.name &&
+      typeof goal.childProfileId === "string" &&
+      goal.childProfileId &&
+      typeof goal.goalName === "string" &&
+      goal.goalName &&
       Number.isFinite(goal.targetAmount) &&
       Number.isFinite(goal.currentAmount) &&
-      (goal.status === "active" || goal.status === "completed")
+      (goal.status === "active" || goal.status === "completed") &&
+      typeof goal.goalImage === "string" &&
+      typeof goal.startDate === "string" &&
+      typeof goal.endDate === "string"
     );
   }
 
@@ -42,14 +113,94 @@
       typeof transaction === "object" &&
       typeof transaction.id === "string" &&
       transaction.id &&
+      typeof transaction.childProfileId === "string" &&
+      transaction.childProfileId &&
       typeof transaction.goalId === "string" &&
       transaction.goalId &&
-      (transaction.type === "in" || transaction.type === "out") &&
+      typeof transaction.transactionDate === "string" &&
       Number.isFinite(transaction.amount) &&
       transaction.amount > 0 &&
-      typeof transaction.date === "string" &&
-      transaction.date
+      (transaction.type === "in" || transaction.type === "out") &&
+      typeof transaction.source === "string" &&
+      typeof transaction.category === "string" &&
+      typeof transaction.note === "string"
     );
+  }
+
+  function migrateFromLegacyData(parsed) {
+    const now = new Date().toISOString();
+    const parentUser = {
+      id: "user-parent-1",
+      name: "Parent",
+      email: "parent@example.com",
+      role: "parent",
+    };
+
+    const childProfiles = (Array.isArray(parsed.children) ? parsed.children : [])
+      .filter((child) => child && typeof child.id === "string" && child.id && typeof child.name === "string" && child.name)
+      .map((child) => ({
+        id: child.id,
+        userId: parentUser.id,
+        childName: child.name,
+        avatar: typeof child.avatar === "string" ? child.avatar : "🙂",
+        birthDate: "",
+        createdAt: now,
+      }));
+
+    if (childProfiles.length === 0) {
+      return structuredClone(defaultData);
+    }
+
+    const childProfileIds = new Set(childProfiles.map((profile) => profile.id));
+
+    const goals = (Array.isArray(parsed.goals) ? parsed.goals : [])
+      .filter((goal) => goal && typeof goal.id === "string" && goal.id && childProfileIds.has(goal.childId))
+      .map((goal) => {
+        const targetAmount = Number.isFinite(goal.targetAmount) && goal.targetAmount > 0 ? goal.targetAmount : 1;
+        const currentAmount = Number.isFinite(goal.currentAmount) ? Math.max(0, Math.min(goal.currentAmount, targetAmount)) : 0;
+        const status = goal.status === "completed" || currentAmount >= targetAmount ? "completed" : "active";
+        return {
+          id: goal.id,
+          childProfileId: goal.childId,
+          goalName: typeof goal.name === "string" && goal.name ? goal.name : "Goal",
+          targetAmount,
+          currentAmount,
+          status,
+          goalImage: typeof goal.icon === "string" ? goal.icon : "🎯",
+          startDate: "",
+          endDate: "",
+        };
+      });
+
+    const goalIds = new Set(goals.map((goal) => goal.id));
+    const goalChildMap = new Map(goals.map((goal) => [goal.id, goal.childProfileId]));
+
+    const transactions = (Array.isArray(parsed.transactions) ? parsed.transactions : [])
+      .filter((transaction) => transaction && typeof transaction.goalId === "string" && goalIds.has(transaction.goalId))
+      .map((transaction) => ({
+        id: typeof transaction.id === "string" && transaction.id ? transaction.id : `txn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        childProfileId: goalChildMap.get(transaction.goalId),
+        goalId: transaction.goalId,
+        transactionDate: typeof transaction.date === "string" && transaction.date ? transaction.date : now,
+        amount: Number.isFinite(transaction.amount) && transaction.amount > 0 ? transaction.amount : 0,
+        type: transaction.type === "out" ? "out" : "in",
+        source: "manual",
+        category: "general",
+        note: "",
+      }))
+      .filter((transaction) => transaction.amount > 0);
+
+    const requestedScreen = VALID_SCREENS.includes(parsed.currentScreen) ? parsed.currentScreen : "child-picker";
+    const activeChildProfileId = childProfiles.some((profile) => profile.id === parsed.activeChildId) ? parsed.activeChildId : null;
+
+    return {
+      users: [parentUser],
+      childProfiles,
+      goals,
+      transactions,
+      currentScreen: activeChildProfileId ? requestedScreen : "child-picker",
+      activeChildProfileId,
+    };
   }
 
   function loadState() {
@@ -58,34 +209,55 @@
 
     try {
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed.children) || !Array.isArray(parsed.goals) || !Array.isArray(parsed.transactions)) {
+
+      if (Array.isArray(parsed.children) && Array.isArray(parsed.goals) && Array.isArray(parsed.transactions)) {
+        return migrateFromLegacyData(parsed);
+      }
+
+      if (
+        !Array.isArray(parsed.users) ||
+        !Array.isArray(parsed.childProfiles) ||
+        !Array.isArray(parsed.goals) ||
+        !Array.isArray(parsed.transactions)
+      ) {
         return structuredClone(defaultData);
       }
 
-      const children = parsed.children.filter(isValidChild);
-      if (children.length === 0) return structuredClone(defaultData);
+      const users = parsed.users.filter(isValidUser);
+      if (users.length === 0) return structuredClone(defaultData);
 
-      const childIds = new Set(children.map((child) => child.id));
+      const userIds = new Set(users.map((user) => user.id));
+      const childProfiles = parsed.childProfiles.filter(isValidChildProfile).filter((childProfile) => userIds.has(childProfile.userId));
+      if (childProfiles.length === 0) return structuredClone(defaultData);
+
+      const childProfileIds = new Set(childProfiles.map((childProfile) => childProfile.id));
       const goals = parsed.goals
         .filter(isValidGoal)
-        .filter((goal) => childIds.has(goal.childId))
+        .filter((goal) => childProfileIds.has(goal.childProfileId))
         .map((goal) => ({
           ...goal,
           currentAmount: Math.max(0, Math.min(goal.currentAmount, goal.targetAmount)),
         }));
 
       const goalIds = new Set(goals.map((goal) => goal.id));
-      const transactions = parsed.transactions.filter(isValidTransaction).filter((txn) => goalIds.has(txn.goalId));
+      const goalChildMap = new Map(goals.map((goal) => [goal.id, goal.childProfileId]));
+      const transactions = parsed.transactions
+        .filter(isValidTransaction)
+        .filter((transaction) => goalIds.has(transaction.goalId))
+        .filter((transaction) => goalChildMap.get(transaction.goalId) === transaction.childProfileId);
 
-      const activeChildId = children.some((child) => child.id === parsed.activeChildId) ? parsed.activeChildId : null;
       const requestedScreen = VALID_SCREENS.includes(parsed.currentScreen) ? parsed.currentScreen : "child-picker";
+      const activeChildProfileId = childProfiles.some((profile) => profile.id === parsed.activeChildProfileId)
+        ? parsed.activeChildProfileId
+        : null;
 
       return {
-        currentScreen: activeChildId ? requestedScreen : "child-picker",
-        activeChildId,
-        children,
+        users,
+        childProfiles,
         goals,
         transactions,
+        currentScreen: activeChildProfileId ? requestedScreen : "child-picker",
+        activeChildProfileId,
       };
     } catch {
       return structuredClone(defaultData);
@@ -98,25 +270,79 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }
 
+  function normalizeChildProfileForUI(childProfile) {
+    return {
+      id: childProfile.id,
+      name: childProfile.childName,
+      childName: childProfile.childName,
+      avatar: childProfile.avatar,
+      birthDate: childProfile.birthDate,
+      createdAt: childProfile.createdAt,
+      userId: childProfile.userId,
+    };
+  }
+
+  function normalizeGoalForUI(goal) {
+    return {
+      id: goal.id,
+      childId: goal.childProfileId,
+      childProfileId: goal.childProfileId,
+      name: goal.goalName,
+      goalName: goal.goalName,
+      icon: goal.goalImage,
+      goalImage: goal.goalImage,
+      targetAmount: goal.targetAmount,
+      currentAmount: goal.currentAmount,
+      status: goal.status,
+      startDate: goal.startDate,
+      endDate: goal.endDate,
+    };
+  }
+
+  function normalizeTransactionForUI(transaction) {
+    return {
+      id: transaction.id,
+      childProfileId: transaction.childProfileId,
+      goalId: transaction.goalId,
+      date: transaction.transactionDate,
+      transactionDate: transaction.transactionDate,
+      amount: transaction.amount,
+      type: transaction.type,
+      source: transaction.source,
+      category: transaction.category,
+      note: transaction.note,
+    };
+  }
+
+  function getSerializableState() {
+    return structuredClone(state);
+  }
+
   function setCurrentScreen(screenName) {
     state.currentScreen = VALID_SCREENS.includes(screenName) ? screenName : "child-picker";
     saveState();
   }
 
-  function setActiveChildId(childId) {
-    state.activeChildId = state.children.some((child) => child.id === childId) ? childId : null;
+  function setActiveChildId(childProfileId) {
+    state.activeChildProfileId = state.childProfiles.some((childProfile) => childProfile.id === childProfileId) ? childProfileId : null;
     saveState();
   }
 
   function getActiveChild() {
-    return state.children.find((child) => child.id === state.activeChildId) || null;
+    const profile = state.childProfiles.find((childProfile) => childProfile.id === state.activeChildProfileId) || null;
+    return profile ? normalizeChildProfileForUI(profile) : null;
   }
 
-  function getGoalsForChild(childId) {
-    return state.goals.filter((goal) => goal.childId === childId);
+  function getGoalsForChild(childProfileId) {
+    return state.goals.filter((goal) => goal.childProfileId === childProfileId).map(normalizeGoalForUI);
   }
 
   function getGoalById(goalId) {
+    const goal = state.goals.find((item) => item.id === goalId) || null;
+    return goal ? normalizeGoalForUI(goal) : null;
+  }
+
+  function getRawGoalById(goalId) {
     return state.goals.find((goal) => goal.id === goalId) || null;
   }
 
@@ -125,10 +351,10 @@
   }
 
   function getActiveGoalsFromSelected(goalId) {
-    const selectedGoal = getGoalById(goalId);
+    const selectedGoal = getRawGoalById(goalId);
     if (!selectedGoal) return [];
 
-    const childGoals = state.goals.filter((goal) => goal.childId === selectedGoal.childId && isGoalActive(goal));
+    const childGoals = state.goals.filter((goal) => goal.childProfileId === selectedGoal.childProfileId && isGoalActive(goal));
     const selectedIndex = childGoals.findIndex((goal) => goal.id === goalId);
     if (selectedIndex < 0) return [];
 
@@ -136,31 +362,36 @@
   }
 
   function getActiveGoalsForWithdrawal(goalId) {
-    const selectedGoal = getGoalById(goalId);
+    const selectedGoal = getRawGoalById(goalId);
     if (!selectedGoal || !isGoalActive(selectedGoal)) return [];
 
-    const childGoals = state.goals.filter((goal) => goal.childId === selectedGoal.childId && isGoalActive(goal));
+    const childGoals = state.goals.filter((goal) => goal.childProfileId === selectedGoal.childProfileId && isGoalActive(goal));
     return [selectedGoal, ...childGoals.filter((goal) => goal.id !== selectedGoal.id)];
   }
 
-  function pushTransaction(goalId, type, amount) {
+  function pushTransaction(goalId, childProfileId, type, amount) {
     state.transactions.push({
       id: `txn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      childProfileId,
       goalId,
-      type,
+      transactionDate: new Date().toISOString(),
       amount,
-      date: new Date().toISOString(),
+      type,
+      source: "manual",
+      category: "general",
+      note: "",
     });
   }
 
   function getTransactionsForGoal(goalId, type) {
     return state.transactions
       .filter((transaction) => transaction.goalId === goalId && (!type || transaction.type === type))
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
+      .sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate))
+      .map(normalizeTransactionForUI);
   }
 
-  function getChildSummary(childId) {
-    const goals = getGoalsForChild(childId);
+  function getChildSummary(childProfileId) {
+    const goals = state.goals.filter((goal) => goal.childProfileId === childProfileId);
     const goalIds = new Set(goals.map((goal) => goal.id));
     const childTransactions = state.transactions.filter((transaction) => goalIds.has(transaction.goalId));
 
@@ -186,29 +417,31 @@
 
     const goal = {
       id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      childId: activeChild.id,
-      name,
+      childProfileId: activeChild.id,
+      goalName: name,
       targetAmount,
       currentAmount: 0,
-      icon: icon || "🎯",
       status: "active",
+      goalImage: icon || "🎯",
+      startDate: new Date().toISOString().slice(0, 10),
+      endDate: "",
     };
 
     state.goals.push(goal);
     saveState();
-    return goal;
+    return normalizeGoalForUI(goal);
   }
 
   function updateGoal(goalId, updates) {
-    const goal = getGoalById(goalId);
+    const goal = getRawGoalById(goalId);
     if (!goal) return null;
 
-    if (typeof updates.name === "string" && updates.name.trim()) goal.name = updates.name.trim();
+    if (typeof updates.name === "string" && updates.name.trim()) goal.goalName = updates.name.trim();
     if (Number.isInteger(updates.targetAmount) && updates.targetAmount > 0) {
       goal.targetAmount = updates.targetAmount;
       goal.currentAmount = Math.min(goal.currentAmount, goal.targetAmount);
     }
-    if (typeof updates.icon === "string" && updates.icon.trim()) goal.icon = updates.icon.trim();
+    if (typeof updates.icon === "string" && updates.icon.trim()) goal.goalImage = updates.icon.trim();
 
     if (goal.status === "active" && goal.currentAmount >= goal.targetAmount) {
       goal.currentAmount = goal.targetAmount;
@@ -216,11 +449,11 @@
     }
 
     saveState();
-    return goal;
+    return normalizeGoalForUI(goal);
   }
 
   function addMoneyToGoals({ goalId, amount }) {
-    const selectedGoal = getGoalById(goalId);
+    const selectedGoal = getRawGoalById(goalId);
     if (!selectedGoal || !Number.isInteger(amount) || amount <= 0) {
       return { ok: false, error: "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
     }
@@ -245,7 +478,7 @@
       remaining -= applied;
 
       if (applied > 0) {
-        pushTransaction(goal.id, "in", applied);
+        pushTransaction(goal.id, goal.childProfileId, "in", applied);
         appliedTransactions.push({ goalId: goal.id, amount: applied });
       }
 
@@ -267,7 +500,7 @@
   }
 
   function withdrawMoneyFromGoals({ goalId, amount, allowCrossGoal }) {
-    const selectedGoal = getGoalById(goalId);
+    const selectedGoal = getRawGoalById(goalId);
     if (!selectedGoal || !Number.isInteger(amount) || amount <= 0) {
       return { ok: false, error: "INVALID_INPUT", deductions: [], usedMultipleGoals: false };
     }
@@ -300,7 +533,7 @@
       goal.currentAmount -= deducted;
       remaining -= deducted;
 
-      pushTransaction(goal.id, "out", deducted);
+      pushTransaction(goal.id, goal.childProfileId, "out", deducted);
       deductions.push({ goalId: goal.id, amount: deducted });
     });
 
@@ -314,7 +547,7 @@
   }
 
   function addTransaction({ goalId, type, amount }) {
-    const selectedGoal = getGoalById(goalId);
+    const selectedGoal = getRawGoalById(goalId);
     if (!selectedGoal || !Number.isInteger(amount) || amount <= 0 || (type !== "in" && type !== "out")) {
       return { ok: false, justCompleted: false };
     }
@@ -332,8 +565,8 @@
       return { ok: false, justCompleted: false, error: result.error };
     }
 
-    const selectedGoalAfter = getGoalById(goalId);
-    const child = state.children.find((item) => item.id === selectedGoal.childId);
+    const selectedGoalAfter = getRawGoalById(goalId);
+    const childProfile = state.childProfiles.find((profile) => profile.id === selectedGoal.childProfileId);
 
     return {
       ok: true,
@@ -342,13 +575,14 @@
         !selectedGoalWasCompleted &&
         selectedGoalAfter &&
         selectedGoalAfter.currentAmount >= selectedGoalAfter.targetAmount,
-      childName: child ? child.name : "",
-      goalName: selectedGoal.name,
+      childName: childProfile ? childProfile.childName : "",
+      goalName: selectedGoal.goalName,
     };
   }
 
   window.AppState = {
     state,
+    getSerializableState,
     setCurrentScreen,
     setActiveChildId,
     getActiveChild,

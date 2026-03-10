@@ -22,8 +22,13 @@
 
   function renderApp() {
     enforceSafeScreen();
+
     window.ChildPickerUI.renderChildPicker(renderApp);
-    window.ChildHomeUI.renderChildHome();
+
+    if (window.AppState.state.currentScreen === "child-home") {
+      window.ChildHomeUI.renderChildHome();
+    }
+
     showScreen(window.AppState.state.currentScreen);
   }
 

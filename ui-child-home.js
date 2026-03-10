@@ -23,6 +23,8 @@
   const confirmCrossGoalNoButton = document.getElementById("confirm-cross-goal-no");
   const insufficientFundsModal = document.getElementById("insufficient-funds-modal");
   const closeInsufficientFundsModalButton = document.getElementById("close-insufficient-funds-modal");
+  const insufficientFundsModalTitle = insufficientFundsModal.querySelector("h2");
+  const insufficientFundsModalMessage = insufficientFundsModal.querySelector(".helper");
 
   const goalModal = document.getElementById("goal-modal");
   const goalModalTitle = document.getElementById("goal-modal-title");
@@ -77,7 +79,9 @@
     crossGoalConfirmModal.setAttribute("aria-hidden", "true");
   }
 
-  function openInsufficientFundsModal() {
+  function openInfoModal(title, message) {
+    insufficientFundsModalTitle.textContent = title;
+    insufficientFundsModalMessage.textContent = message;
     insufficientFundsModal.classList.remove("hidden");
     insufficientFundsModal.setAttribute("aria-hidden", "false");
     closeInsufficientFundsModalButton.focus();
@@ -327,12 +331,17 @@
 
       if (!result.ok) {
         if (result.error === "INSUFFICIENT_FUNDS") {
-          openInsufficientFundsModal();
+          openInfoModal("Not enough money", "You don’t have enough money in your goals.");
           return;
         }
 
         if (result.error === "CROSS_GOAL_REQUIRED") {
           openCrossGoalConfirmModal(selectedGoalId, amount);
+          return;
+        }
+
+        if (result.error === "GOAL_COMPLETED") {
+          openInfoModal("Goal already completed", "This goal is already completed. You can't take money from it.");
           return;
         }
 

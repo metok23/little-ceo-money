@@ -112,6 +112,27 @@
     return state.goals.find((goal) => goal.id === goalId) || null;
   }
 
+  function getGoalsFromSelected(goalId) {
+    const selectedGoal = getGoalById(goalId);
+    if (!selectedGoal) return [];
+
+    const childGoals = state.goals.filter((goal) => goal.childId === selectedGoal.childId);
+    const selectedIndex = childGoals.findIndex((goal) => goal.id === goalId);
+    if (selectedIndex < 0) return [];
+
+    return childGoals.slice(selectedIndex);
+  }
+
+  function pushTransaction(goalId, type, amount) {
+    state.transactions.push({
+      id: `txn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      goalId,
+      type,
+      amount,
+      date: new Date().toISOString(),
+    });
+  }
+
   function getTransactionsForGoal(goalId, type) {
     return state.transactions
       .filter((transaction) => transaction.goalId === goalId && (!type || transaction.type === type))
@@ -169,39 +190,120 @@
     return goal;
   }
 
-  function addTransaction({ goalId, type, amount }) {
-    const goal = getGoalById(goalId);
-    if (!goal || !Number.isInteger(amount) || amount <= 0 || (type !== "in" && type !== "out")) {
-      return { ok: false, justCompleted: false };
+  function addMoneyToGoals({ goalId, amount }) {
+    const selectedGoal = getGoalById(goalId);
+    if (!selectedGoal || !Number.isInteger(amount) || amount <= 0) {
+      return { ok: false, error: "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
     }
 
-    const wasCompleted = goal.currentAmount >= goal.targetAmount;
+    let remaining = amount;
+    const goalSequence = getGoalsFromSelected(goalId);
+    const appliedTransactions = [];
+    const completedGoals = [];
 
-    if (type === "in") {
-      goal.currentAmount += amount;
-    } else {
-      goal.currentAmount = Math.max(0, goal.currentAmount - amount);
-    }
+    goalSequence.forEach((goal) => {
+      if (remaining <= 0) return;
 
-    const isCompleted = goal.currentAmount >= goal.targetAmount;
+      const before = goal.currentAmount;
+      const space = Math.max(0, goal.targetAmount - goal.currentAmount);
+      if (space <= 0) return;
 
-    state.transactions.push({
-      id: `txn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      goalId,
-      type,
-      amount,
-      date: new Date().toISOString(),
+      const applied = Math.min(remaining, space);
+      goal.currentAmount += applied;
+      remaining -= applied;
+
+      pushTransaction(goal.id, "in", applied);
+      appliedTransactions.push({ goalId: goal.id, amount: applied });
+
+      if (before < goal.targetAmount && goal.currentAmount >= goal.targetAmount) {
+        completedGoals.push(goal.id);
+      }
     });
 
     saveState();
 
-    const child = state.children.find((item) => item.id === goal.childId);
+    return {
+      ok: true,
+      appliedTransactions,
+      overflow: remaining,
+      completedGoals,
+    };
+  }
+
+  function withdrawMoneyFromGoals({ goalId, amount, allowCrossGoal }) {
+    const selectedGoal = getGoalById(goalId);
+    if (!selectedGoal || !Number.isInteger(amount) || amount <= 0) {
+      return { ok: false, error: "INVALID_INPUT", deductions: [], usedMultipleGoals: false };
+    }
+
+    const goalSequence = getGoalsFromSelected(goalId);
+    const selectedGoalBalance = selectedGoal.currentAmount;
+    const availableTotal = goalSequence.reduce((sum, goal) => sum + goal.currentAmount, 0);
+
+    if (amount > availableTotal) {
+      return { ok: false, error: "INSUFFICIENT_FUNDS", availableTotal };
+    }
+
+    if (amount > selectedGoalBalance && !allowCrossGoal) {
+      return { ok: false, error: "CROSS_GOAL_REQUIRED", selectedGoalBalance, availableTotal };
+    }
+
+    let remaining = amount;
+    const deductions = [];
+
+    goalSequence.forEach((goal) => {
+      if (remaining <= 0) return;
+
+      const deducted = Math.min(goal.currentAmount, remaining);
+      if (deducted <= 0) return;
+
+      goal.currentAmount -= deducted;
+      remaining -= deducted;
+
+      pushTransaction(goal.id, "out", deducted);
+      deductions.push({ goalId: goal.id, amount: deducted });
+    });
+
+    saveState();
 
     return {
       ok: true,
-      justCompleted: type === "in" && !wasCompleted && isCompleted,
+      deductions,
+      usedMultipleGoals: deductions.length > 1,
+    };
+  }
+
+  function addTransaction({ goalId, type, amount }) {
+    const selectedGoal = getGoalById(goalId);
+    if (!selectedGoal || !Number.isInteger(amount) || amount <= 0 || (type !== "in" && type !== "out")) {
+      return { ok: false, justCompleted: false };
+    }
+
+    const selectedGoalWasCompleted = selectedGoal.currentAmount >= selectedGoal.targetAmount;
+    let result;
+
+    if (type === "in") {
+      result = addMoneyToGoals({ goalId, amount });
+    } else {
+      result = withdrawMoneyFromGoals({ goalId, amount, allowCrossGoal: false });
+    }
+
+    if (!result.ok) {
+      return { ok: false, justCompleted: false, error: result.error };
+    }
+
+    const selectedGoalAfter = getGoalById(goalId);
+    const child = state.children.find((item) => item.id === selectedGoal.childId);
+
+    return {
+      ok: true,
+      justCompleted:
+        type === "in" &&
+        !selectedGoalWasCompleted &&
+        selectedGoalAfter &&
+        selectedGoalAfter.currentAmount >= selectedGoalAfter.targetAmount,
       childName: child ? child.name : "",
-      goalName: goal.name,
+      goalName: selectedGoal.name,
     };
   }
 
@@ -216,6 +318,8 @@
     getChildSummary,
     addGoalForActiveChild,
     updateGoal,
+    addMoneyToGoals,
+    withdrawMoneyFromGoals,
     addTransaction,
   };
 })();

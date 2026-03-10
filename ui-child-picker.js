@@ -18,7 +18,7 @@
   function renderChildPicker(onProfileSelected) {
     childProfilePicker.innerHTML = "";
 
-    window.AppState.state.childProfiles.forEach((child) => {
+9    window.AppState.state.childProfiles.forEach((child) => {
       childProfilePicker.appendChild(createChildSelectButton(child, onProfileSelected));
     });
   }

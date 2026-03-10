@@ -169,6 +169,7 @@
       const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
       const card = document.createElement("article");
       card.className = `goal-card ${goal.id === selectedGoalId ? "selected" : ""}`;
+      card.dataset.goalId = goal.id;
 
       card.innerHTML = `
         <div class="goal-title-row">
@@ -189,15 +190,22 @@
       goalsList.appendChild(card);
     });
 
-    goalsList.querySelectorAll(".goal-select").forEach((button) => {
-      button.addEventListener("click", () => {
-        selectedGoalId = button.dataset.goalId;
+    goalsList.querySelectorAll(".goal-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        selectedGoalId = card.dataset.goalId;
         renderChildHome();
       });
     });
 
+    goalsList.querySelectorAll(".goal-menu summary").forEach((summary) => {
+      summary.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+    });
+
     goalsList.querySelectorAll(".goal-edit-btn").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
         openGoalModalForEdit(button.dataset.goalId);
       });
     });

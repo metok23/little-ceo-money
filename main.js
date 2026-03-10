@@ -34,10 +34,25 @@
   }
 
   function initApp() {
-    window.ChildHomeUI.initChildHome({
-      onStateChange: renderApp,
-      onCelebrate: handleCelebrate,
-    });
+    try {
+      window.ChildHomeUI.initChildHome({
+        onStateChange: renderApp,
+        onCelebrate: handleCelebrate,
+      });
+    } catch (error) {
+      const debugBox = document.createElement("div");
+      debugBox.style.background = "#fff4f4";
+      debugBox.style.color = "#7a1122";
+      debugBox.style.border = "2px solid #ffb3bf";
+      debugBox.style.borderRadius = "12px";
+      debugBox.style.padding = "12px";
+      debugBox.style.margin = "12px 0";
+      debugBox.style.fontWeight = "700";
+      debugBox.style.whiteSpace = "pre-line";
+      debugBox.textContent = `initChildHome failed\n${error instanceof Error ? error.message : String(error)}`;
+      document.body.prepend(debugBox);
+      return;
+    }
 
     celebrationDoneButton.addEventListener("click", () => {
       window.AppState.setCurrentScreen("child-home");

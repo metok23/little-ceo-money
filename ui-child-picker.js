@@ -18,7 +18,27 @@
   function renderChildPicker(onProfileSelected) {
     childProfilePicker.innerHTML = "";
 
-9    window.AppState.state.childProfiles.forEach((child) => {
+    const hasAppState = typeof window.AppState === "object" && window.AppState !== null;
+    const hasState = hasAppState && typeof window.AppState.state === "object" && window.AppState.state !== null;
+    const childProfiles = hasState ? window.AppState.state.childProfiles : undefined;
+    const isChildProfilesArray = Array.isArray(childProfiles);
+    const childProfilesCount = isChildProfilesArray ? childProfiles.length : 0;
+
+    const debugInfo = document.createElement("pre");
+    debugInfo.className = "debug-info";
+    debugInfo.textContent = [
+      `AppState: ${hasAppState ? "yes" : "no"}`,
+      `state: ${hasState ? "yes" : "no"}`,
+      `childProfiles array: ${isChildProfilesArray ? "yes" : "no"}`,
+      `childProfiles count: ${childProfilesCount}`,
+    ].join("\n");
+    childProfilePicker.appendChild(debugInfo);
+
+    if (!isChildProfilesArray) {
+      return;
+    }
+
+    childProfiles.forEach((child) => {
       childProfilePicker.appendChild(createChildSelectButton(child, onProfileSelected));
     });
   }

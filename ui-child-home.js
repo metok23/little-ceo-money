@@ -247,9 +247,34 @@
       if (!result.ok) {
         if (result.error === "INSUFFICIENT_FUNDS") {
           alert("Not enough money.");
-        } else if (result.error === "CROSS_GOAL_REQUIRED") {
-          alert("Not enough money in this goal. Use money from other goals?");
+          return;
         }
+
+        if (result.error === "CROSS_GOAL_REQUIRED") {
+          const shouldUseOtherGoals = confirm("Not enough money in this goal. Use money from other goals?");
+
+          if (!shouldUseOtherGoals) {
+            transactionAmountInput.focus();
+            return;
+          }
+
+          const crossGoalResult = window.AppState.withdrawMoneyFromGoals({
+            goalId: selectedGoalId,
+            amount,
+            allowCrossGoal: true,
+          });
+
+          if (!crossGoalResult.ok) {
+            alert("Something went wrong.");
+            return;
+          }
+
+          closeTransactionModal();
+          onStateChange();
+          return;
+        }
+
+        alert("Something went wrong.");
         return;
       }
 

@@ -18,6 +18,9 @@
   const transactionAmountInput = document.getElementById("transaction-amount-input");
   const submitTransactionButton = document.getElementById("submit-transaction");
   const closeTransactionModalButton = document.getElementById("close-transaction-modal");
+  const crossGoalConfirmModal = document.getElementById("cross-goal-confirm-modal");
+  const confirmCrossGoalYesButton = document.getElementById("confirm-cross-goal-yes");
+  const confirmCrossGoalNoButton = document.getElementById("confirm-cross-goal-no");
 
   const goalModal = document.getElementById("goal-modal");
   const goalModalTitle = document.getElementById("goal-modal-title");
@@ -31,6 +34,7 @@
   let transactionMode = "in";
   let goalModalMode = "add";
   let editingGoalId = null;
+  let pendingCrossGoalWithdrawal = null;
 
   function sanitizeIntegerInput(input) {
     input.value = input.value.replace(/\D/g, "");
@@ -55,6 +59,20 @@
   function closeTransactionModal() {
     transactionModal.classList.add("hidden");
     transactionModal.setAttribute("aria-hidden", "true");
+    pendingCrossGoalWithdrawal = null;
+    closeCrossGoalConfirmModal();
+  }
+
+  function openCrossGoalConfirmModal(goalId, amount) {
+    pendingCrossGoalWithdrawal = { goalId, amount };
+    crossGoalConfirmModal.classList.remove("hidden");
+    crossGoalConfirmModal.setAttribute("aria-hidden", "false");
+    confirmCrossGoalYesButton.focus();
+  }
+
+  function closeCrossGoalConfirmModal() {
+    crossGoalConfirmModal.classList.add("hidden");
+    crossGoalConfirmModal.setAttribute("aria-hidden", "true");
   }
 
   function openGoalModalForAdd() {
@@ -235,6 +253,44 @@
       if (event.target === goalModal) closeGoalModal();
     });
 
+    crossGoalConfirmModal.addEventListener("click", (event) => {
+      if (event.target === crossGoalConfirmModal) {
+        closeCrossGoalConfirmModal();
+        transactionAmountInput.focus();
+      }
+    });
+
+    confirmCrossGoalNoButton.addEventListener("click", () => {
+      closeCrossGoalConfirmModal();
+      transactionAmountInput.focus();
+    });
+
+    confirmCrossGoalYesButton.addEventListener("click", () => {
+      if (!pendingCrossGoalWithdrawal) {
+        closeCrossGoalConfirmModal();
+        alert("Something went wrong.");
+        return;
+      }
+
+      const crossGoalResult = window.AppState.withdrawMoneyFromGoals({
+        goalId: pendingCrossGoalWithdrawal.goalId,
+        amount: pendingCrossGoalWithdrawal.amount,
+        allowCrossGoal: true,
+      });
+
+      if (!crossGoalResult.ok) {
+        alert("Something went wrong.");
+        closeCrossGoalConfirmModal();
+        transactionAmountInput.focus();
+        return;
+      }
+
+      pendingCrossGoalWithdrawal = null;
+      closeCrossGoalConfirmModal();
+      closeTransactionModal();
+      onStateChange();
+    });
+
     submitTransactionButton.addEventListener("click", () => {
       const raw = transactionAmountInput.value.trim();
       if (!/^\d+$/.test(raw)) return;
@@ -251,26 +307,7 @@
         }
 
         if (result.error === "CROSS_GOAL_REQUIRED") {
-          const shouldUseOtherGoals = confirm("Not enough money in this goal. Use money from other goals?");
-
-          if (!shouldUseOtherGoals) {
-            transactionAmountInput.focus();
-            return;
-          }
-
-          const crossGoalResult = window.AppState.withdrawMoneyFromGoals({
-            goalId: selectedGoalId,
-            amount,
-            allowCrossGoal: true,
-          });
-
-          if (!crossGoalResult.ok) {
-            alert("Something went wrong.");
-            return;
-          }
-
-          closeTransactionModal();
-          onStateChange();
+          openCrossGoalConfirmModal(selectedGoalId, amount);
           return;
         }
 

@@ -21,6 +21,8 @@
   const crossGoalConfirmModal = document.getElementById("cross-goal-confirm-modal");
   const confirmCrossGoalYesButton = document.getElementById("confirm-cross-goal-yes");
   const confirmCrossGoalNoButton = document.getElementById("confirm-cross-goal-no");
+  const insufficientFundsModal = document.getElementById("insufficient-funds-modal");
+  const closeInsufficientFundsModalButton = document.getElementById("close-insufficient-funds-modal");
 
   const goalModal = document.getElementById("goal-modal");
   const goalModalTitle = document.getElementById("goal-modal-title");
@@ -73,6 +75,17 @@
   function closeCrossGoalConfirmModal() {
     crossGoalConfirmModal.classList.add("hidden");
     crossGoalConfirmModal.setAttribute("aria-hidden", "true");
+  }
+
+  function openInsufficientFundsModal() {
+    insufficientFundsModal.classList.remove("hidden");
+    insufficientFundsModal.setAttribute("aria-hidden", "false");
+    closeInsufficientFundsModalButton.focus();
+  }
+
+  function closeInsufficientFundsModal() {
+    insufficientFundsModal.classList.add("hidden");
+    insufficientFundsModal.setAttribute("aria-hidden", "true");
   }
 
   function openGoalModalForAdd() {
@@ -265,6 +278,18 @@
       transactionAmountInput.focus();
     });
 
+    insufficientFundsModal.addEventListener("click", (event) => {
+      if (event.target === insufficientFundsModal) {
+        closeInsufficientFundsModal();
+        transactionAmountInput.focus();
+      }
+    });
+
+    closeInsufficientFundsModalButton.addEventListener("click", () => {
+      closeInsufficientFundsModal();
+      transactionAmountInput.focus();
+    });
+
     confirmCrossGoalYesButton.addEventListener("click", () => {
       if (!pendingCrossGoalWithdrawal) {
         closeCrossGoalConfirmModal();
@@ -302,7 +327,7 @@
 
       if (!result.ok) {
         if (result.error === "INSUFFICIENT_FUNDS") {
-          alert("Not enough money.");
+          openInsufficientFundsModal();
           return;
         }
 

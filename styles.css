@@ -244,3 +244,5 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
 @media (min-width: 700px) { .app { padding-top: 30px; } }
 
 #cross-goal-confirm-modal { z-index: 1200; }
+
+#insufficient-funds-modal { z-index: 1200; }

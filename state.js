@@ -135,6 +135,14 @@
     return childGoals.slice(selectedIndex);
   }
 
+  function getActiveGoalsForWithdrawal(goalId) {
+    const selectedGoal = getGoalById(goalId);
+    if (!selectedGoal || !isGoalActive(selectedGoal)) return [];
+
+    const childGoals = state.goals.filter((goal) => goal.childId === selectedGoal.childId && isGoalActive(goal));
+    return [selectedGoal, ...childGoals.filter((goal) => goal.id !== selectedGoal.id)];
+  }
+
   function pushTransaction(goalId, type, amount) {
     state.transactions.push({
       id: `txn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -268,7 +276,7 @@
       return { ok: false, error: "GOAL_COMPLETED", deductions: [], usedMultipleGoals: false };
     }
 
-    const goalSequence = getActiveGoalsFromSelected(goalId);
+    const goalSequence = getActiveGoalsForWithdrawal(goalId);
     const selectedGoalBalance = selectedGoal.currentAmount;
     const availableTotal = goalSequence.reduce((sum, goal) => sum + goal.currentAmount, 0);
 

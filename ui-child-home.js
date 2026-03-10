@@ -243,6 +243,16 @@
       if (!Number.isInteger(amount) || amount <= 0 || !selectedGoalId) return;
 
       const result = window.AppState.addTransaction({ goalId: selectedGoalId, type: transactionMode, amount });
+
+      if (!result.ok) {
+        if (result.error === "INSUFFICIENT_FUNDS") {
+          alert("Not enough money.");
+        } else if (result.error === "CROSS_GOAL_REQUIRED") {
+          alert("Not enough money in this goal. Use money from other goals?");
+        }
+        return;
+      }
+
       closeTransactionModal();
 
       if (result.justCompleted) {

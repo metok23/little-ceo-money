@@ -323,6 +323,41 @@
     attachGoalCardInteractions(completedGoalsList);
   }
 
+  function renderEarningCards() {
+    if (!earningTabPanel) return;
+
+    const placeholder = earningTabPanel.querySelector(".earning-placeholder");
+    if (!placeholder) return;
+
+    placeholder.innerHTML = `
+      <div class="earning-grid">
+        <div class="earning-card">
+          <div class="earning-icon">💼</div>
+          <div class="earning-title">Chores</div>
+          <div class="earning-desc">Small household tasks</div>
+        </div>
+
+        <div class="earning-card">
+          <div class="earning-icon">🎁</div>
+          <div class="earning-title">Gifts</div>
+          <div class="earning-desc">Money from family</div>
+        </div>
+
+        <div class="earning-card">
+          <div class="earning-icon">🍋</div>
+          <div class="earning-title">Lemon Stand</div>
+          <div class="earning-desc">Selling lemonade</div>
+        </div>
+
+        <div class="earning-card">
+          <div class="earning-icon">⭐</div>
+          <div class="earning-title">Bonus</div>
+          <div class="earning-desc">Extra reward</div>
+        </div>
+      </div>
+    `;
+  }
+
   function renderChildHome() {
     renderBalancesForActiveChild();
     renderGoalsForActiveChild();
@@ -475,6 +510,7 @@
       onStateChange();
     });
 
+    renderEarningCards();
     setActiveTab(TAB_IDS.activeGoals);
   }
 

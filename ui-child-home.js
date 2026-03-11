@@ -2,12 +2,7 @@
   const childHomeTitle = document.getElementById("child-home-title");
   const goalsList = document.getElementById("goals-list");
   const coinsTotal = document.getElementById("coins-total");
-  const coinsCard = coinsTotal ? coinsTotal.closest(".coins-card") : null;
-  const freeMoneyHint = document.createElement("p");
-  freeMoneyHint.className = "free-money-hint hidden";
-  if (coinsCard) {
-    coinsCard.appendChild(freeMoneyHint);
-  }
+  const freeMoneyHint = document.getElementById("free-money-hint");
   const completedGoalsSection = document.getElementById("completed-goals-section");
   const completedGoalsList = document.getElementById("completed-goals-list");
 
@@ -33,8 +28,8 @@
   const confirmCrossGoalNoButton = document.getElementById("confirm-cross-goal-no");
   const insufficientFundsModal = document.getElementById("insufficient-funds-modal");
   const closeInsufficientFundsModalButton = document.getElementById("close-insufficient-funds-modal");
-  const insufficientFundsModalTitle = insufficientFundsModal.querySelector("h2");
-  const insufficientFundsModalMessage = insufficientFundsModal.querySelector(".helper");
+  const insufficientFundsModalTitle = insufficientFundsModal ? insufficientFundsModal.querySelector("h2") : null;
+  const insufficientFundsModalMessage = insufficientFundsModal ? insufficientFundsModal.querySelector(".helper") : null;
 
   const goalModal = document.getElementById("goal-modal");
   const goalModalTitle = document.getElementById("goal-modal-title");
@@ -70,6 +65,8 @@
   }
 
   function openTransactionModal(type) {
+    if (!transactionModal || !transactionModalTitle || !transactionAmountInput) return;
+
     const goals = getActiveChildGoals();
     if (goals.length === 0) return;
 
@@ -83,6 +80,8 @@
   }
 
   function closeTransactionModal() {
+    if (!transactionModal) return;
+
     transactionModal.classList.add("hidden");
     transactionModal.setAttribute("aria-hidden", "true");
     pendingCrossGoalWithdrawal = null;
@@ -90,6 +89,8 @@
   }
 
   function openCrossGoalConfirmModal(goalId, amount) {
+    if (!crossGoalConfirmModal || !confirmCrossGoalYesButton) return;
+
     pendingCrossGoalWithdrawal = { goalId, amount };
     crossGoalConfirmModal.classList.remove("hidden");
     crossGoalConfirmModal.setAttribute("aria-hidden", "false");
@@ -97,11 +98,17 @@
   }
 
   function closeCrossGoalConfirmModal() {
+    if (!crossGoalConfirmModal) return;
+
     crossGoalConfirmModal.classList.add("hidden");
     crossGoalConfirmModal.setAttribute("aria-hidden", "true");
   }
 
   function openInfoModal(title, message) {
+    if (!insufficientFundsModal || !insufficientFundsModalTitle || !insufficientFundsModalMessage || !closeInsufficientFundsModalButton) {
+      return;
+    }
+
     insufficientFundsModalTitle.textContent = title;
     insufficientFundsModalMessage.textContent = message;
     insufficientFundsModal.classList.remove("hidden");
@@ -110,11 +117,15 @@
   }
 
   function closeInsufficientFundsModal() {
+    if (!insufficientFundsModal) return;
+
     insufficientFundsModal.classList.add("hidden");
     insufficientFundsModal.setAttribute("aria-hidden", "true");
   }
 
   function openGoalModalForAdd() {
+    if (!goalModal || !goalModalTitle || !goalNameInput || !goalTargetInput || !goalIconInput) return;
+
     goalModalMode = "add";
     editingGoalId = null;
     goalModalTitle.textContent = "Add Goal";
@@ -127,6 +138,8 @@
   }
 
   function openGoalModalForEdit(goalId) {
+    if (!goalModal || !goalModalTitle || !goalNameInput || !goalTargetInput || !goalIconInput) return;
+
     const goal = window.AppState.getGoalById(goalId);
     if (!goal) return;
 
@@ -142,6 +155,8 @@
   }
 
   function closeGoalModal() {
+    if (!goalModal) return;
+
     goalModal.classList.add("hidden");
     goalModal.setAttribute("aria-hidden", "true");
   }
@@ -184,6 +199,8 @@
   }
 
   function renderBalancesForActiveChild() {
+    if (!coinsTotal || !freeMoneyHint) return;
+
     const activeChild = window.AppState.getActiveChild();
     if (!activeChild) {
       coinsTotal.textContent = "$0";
@@ -262,6 +279,8 @@
   }
 
   function renderGoalsForActiveChild() {
+    if (!goalsList || !completedGoalsList || !completedGoalsSection || !childHomeTitle) return;
+
     const activeChild = window.AppState.getActiveChild();
     goalsList.innerHTML = "";
     completedGoalsList.innerHTML = "";
@@ -313,11 +332,13 @@
   function initChildHome({ onStateChange, onCelebrate }) {
     ensureMoneyActionRow();
 
-    switchProfileButton.addEventListener("click", () => {
+    if (switchProfileButton) {
+      switchProfileButton.addEventListener("click", () => {
       window.AppState.setActiveChildId(null);
       window.AppState.setCurrentScreen("child-picker");
       onStateChange();
     });
+    }
 
     navTabButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -325,49 +346,49 @@
       });
     });
 
-    openAddGoalModalButton.addEventListener("click", openGoalModalForAdd);
-    openMoneyInModalButton.addEventListener("click", () => openTransactionModal("in"));
-    openMoneyOutModalButton.addEventListener("click", () => openTransactionModal("out"));
+    if (openAddGoalModalButton) openAddGoalModalButton.addEventListener("click", openGoalModalForAdd);
+    if (openMoneyInModalButton) openMoneyInModalButton.addEventListener("click", () => openTransactionModal("in"));
+    if (openMoneyOutModalButton) openMoneyOutModalButton.addEventListener("click", () => openTransactionModal("out"));
 
-    transactionAmountInput.addEventListener("input", () => sanitizeIntegerInput(transactionAmountInput));
-    goalTargetInput.addEventListener("input", () => sanitizeIntegerInput(goalTargetInput));
+    if (transactionAmountInput) transactionAmountInput.addEventListener("input", () => sanitizeIntegerInput(transactionAmountInput));
+    if (goalTargetInput) goalTargetInput.addEventListener("input", () => sanitizeIntegerInput(goalTargetInput));
 
-    closeTransactionModalButton.addEventListener("click", closeTransactionModal);
-    closeGoalModalButton.addEventListener("click", closeGoalModal);
+    if (closeTransactionModalButton) closeTransactionModalButton.addEventListener("click", closeTransactionModal);
+    if (closeGoalModalButton) closeGoalModalButton.addEventListener("click", closeGoalModal);
 
-    transactionModal.addEventListener("click", (event) => {
+    if (transactionModal) transactionModal.addEventListener("click", (event) => {
       if (event.target === transactionModal) closeTransactionModal();
     });
 
-    goalModal.addEventListener("click", (event) => {
+    if (goalModal) goalModal.addEventListener("click", (event) => {
       if (event.target === goalModal) closeGoalModal();
     });
 
-    crossGoalConfirmModal.addEventListener("click", (event) => {
+    if (crossGoalConfirmModal) crossGoalConfirmModal.addEventListener("click", (event) => {
       if (event.target === crossGoalConfirmModal) {
         closeCrossGoalConfirmModal();
-        transactionAmountInput.focus();
+        transactionAmountInput?.focus();
       }
     });
 
-    confirmCrossGoalNoButton.addEventListener("click", () => {
+    if (confirmCrossGoalNoButton) confirmCrossGoalNoButton.addEventListener("click", () => {
       closeCrossGoalConfirmModal();
-      transactionAmountInput.focus();
+      transactionAmountInput?.focus();
     });
 
-    insufficientFundsModal.addEventListener("click", (event) => {
+    if (insufficientFundsModal) insufficientFundsModal.addEventListener("click", (event) => {
       if (event.target === insufficientFundsModal) {
         closeInsufficientFundsModal();
-        transactionAmountInput.focus();
+        transactionAmountInput?.focus();
       }
     });
 
-    closeInsufficientFundsModalButton.addEventListener("click", () => {
+    if (closeInsufficientFundsModalButton) closeInsufficientFundsModalButton.addEventListener("click", () => {
       closeInsufficientFundsModal();
-      transactionAmountInput.focus();
+      transactionAmountInput?.focus();
     });
 
-    confirmCrossGoalYesButton.addEventListener("click", () => {
+    if (confirmCrossGoalYesButton) confirmCrossGoalYesButton.addEventListener("click", () => {
       if (!pendingCrossGoalWithdrawal) {
         closeCrossGoalConfirmModal();
         alert("Something went wrong.");
@@ -383,7 +404,7 @@
       if (!crossGoalResult.ok) {
         alert("Something went wrong.");
         closeCrossGoalConfirmModal();
-        transactionAmountInput.focus();
+        transactionAmountInput?.focus();
         return;
       }
 
@@ -393,7 +414,8 @@
       onStateChange();
     });
 
-    submitTransactionButton.addEventListener("click", () => {
+    if (submitTransactionButton) submitTransactionButton.addEventListener("click", () => {
+      if (!transactionAmountInput) return;
       const raw = transactionAmountInput.value.trim();
       if (!/^\d+$/.test(raw)) return;
 
@@ -432,7 +454,8 @@
       onStateChange();
     });
 
-    submitGoalButton.addEventListener("click", () => {
+    if (submitGoalButton) submitGoalButton.addEventListener("click", () => {
+      if (!goalNameInput || !goalTargetInput || !goalIconInput) return;
       const name = goalNameInput.value.trim();
       const targetRaw = goalTargetInput.value.trim();
       const icon = goalIconInput.value.trim() || "🎯";

@@ -7,6 +7,8 @@
   const parentNet = document.getElementById("parent-net");
   const parentIn = document.getElementById("parent-in");
   const parentOut = document.getElementById("parent-out");
+  const completedGoalsSection = document.getElementById("completed-goals-section");
+  const completedGoalsList = document.getElementById("completed-goals-list");
 
   const switchProfileButton = document.getElementById("switch-profile");
   const openAddGoalModalButton = document.getElementById("open-add-goal-modal");
@@ -136,79 +138,106 @@
     }
 
     const summary = window.AppState.getChildSummary(activeChild.id);
-    coinsTotal.textContent = `$${summary.totalBalance}`;
+    coinsTotal.textContent = `$${summary.activeBalance}`;
     parentNet.textContent = `$${summary.totalNetBalance}`;
     parentIn.textContent = `$${summary.totalMoneyIn}`;
     parentOut.textContent = `$${summary.totalMoneyOut}`;
   }
 
-  function renderGoalsForActiveChild() {
-    const activeChild = window.AppState.getActiveChild();
-    goalsList.innerHTML = "";
+  function createGoalCard(goal, { selected = false, archived = false } = {}) {
+    const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
+    const card = document.createElement("article");
+    card.className = `goal-card ${selected ? "selected" : ""} ${archived ? "goal-card-completed" : ""}`.trim();
+    card.dataset.goalId = goal.id;
 
-    if (!activeChild) {
-      childHomeTitle.textContent = "Choose a profile";
-      goalsList.innerHTML = '<p class="empty-hint">No profile selected</p>';
-      return;
-    }
-
-    childHomeTitle.textContent = `${activeChild.avatar || "🙂"} ${activeChild.name}`;
-    const goals = window.AppState.getGoalsForChild(activeChild.id);
-
-    if (goals.length === 0) {
-      goalsList.innerHTML = '<p class="empty-hint">No goals yet. Tap Add Goal.</p>';
-      selectedGoalId = null;
-      return;
-    }
-
-    if (!selectedGoalId || !goals.some((goal) => goal.id === selectedGoalId)) {
-      selectedGoalId = goals[0].id;
-    }
-
-    goals.forEach((goal) => {
-      const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
-      const card = document.createElement("article");
-      card.className = `goal-card ${goal.id === selectedGoalId ? "selected" : ""}`;
-      card.dataset.goalId = goal.id;
-
-      card.innerHTML = `
-        <div class="goal-title-row">
-          <button class="goal-select" data-goal-id="${goal.id}">
-            <span>${goal.icon || "🎯"}</span>
-            <strong>${goal.name}</strong>
-          </button>
+    const menuMarkup = archived
+      ? '<span class="goal-trophy-badge" aria-label="Completed goal">🏆</span>'
+      : `
           <details class="goal-menu">
             <summary>⋯</summary>
             <button type="button" class="goal-edit-btn" data-goal-id="${goal.id}">Edit goal</button>
           </details>
-        </div>
-        <p class="money-line">$${goal.currentAmount} / $${goal.targetAmount}</p>
-        <div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div>
-        <p class="progress-text">${Math.round(percent)}% done</p>
-      `;
+        `;
 
-      goalsList.appendChild(card);
-    });
+    card.innerHTML = `
+      <div class="goal-title-row">
+        <button class="goal-select" data-goal-id="${goal.id}">
+          <span>${goal.icon || "🎯"}</span>
+          <strong>${goal.name}</strong>
+        </button>
+        ${menuMarkup}
+      </div>
+      <p class="money-line">$${goal.currentAmount} / $${goal.targetAmount}</p>
+      <div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div>
+      <p class="progress-text">${Math.round(percent)}% done</p>
+    `;
 
-    goalsList.querySelectorAll(".goal-card").forEach((card) => {
+    return card;
+  }
+
+  function attachGoalCardInteractions(rootNode) {
+    rootNode.querySelectorAll(".goal-card").forEach((card) => {
       card.addEventListener("click", () => {
         selectedGoalId = card.dataset.goalId;
         renderChildHome();
       });
     });
 
-    goalsList.querySelectorAll(".goal-menu summary").forEach((summary) => {
+    rootNode.querySelectorAll(".goal-menu summary").forEach((summary) => {
       summary.addEventListener("click", (event) => {
         event.stopPropagation();
       });
     });
 
-    goalsList.querySelectorAll(".goal-edit-btn").forEach((button) => {
+    rootNode.querySelectorAll(".goal-edit-btn").forEach((button) => {
       button.addEventListener("click", (event) => {
         event.stopPropagation();
         openGoalModalForEdit(button.dataset.goalId);
       });
     });
+  }
+
+  function renderGoalsForActiveChild() {
+    const activeChild = window.AppState.getActiveChild();
+    goalsList.innerHTML = "";
+    completedGoalsList.innerHTML = "";
+
+    if (!activeChild) {
+      childHomeTitle.textContent = "Choose a profile";
+      goalsList.innerHTML = '<p class="empty-hint">No profile selected</p>';
+      completedGoalsSection.classList.add("hidden");
+      return;
+    }
+
+    childHomeTitle.textContent = `${activeChild.avatar || "🙂"} ${activeChild.name}`;
+    const goals = window.AppState.getGoalsForChild(activeChild.id);
+    const activeGoals = goals.filter((goal) => goal.status === "active");
+    const completedGoals = goals.filter((goal) => goal.status === "completed");
+
+    if (!selectedGoalId || !activeGoals.some((goal) => goal.id === selectedGoalId)) {
+      selectedGoalId = activeGoals[0] ? activeGoals[0].id : null;
+    }
+
+    if (activeGoals.length === 0) {
+      goalsList.innerHTML = '<p class="empty-hint">No active goals. Tap Add Goal.</p>';
+    } else {
+      activeGoals.forEach((goal) => {
+        goalsList.appendChild(createGoalCard(goal, { selected: goal.id === selectedGoalId }));
+      });
+      attachGoalCardInteractions(goalsList);
+    }
+
+    if (completedGoals.length === 0) {
+      completedGoalsSection.classList.add("hidden");
+      completedGoalsList.innerHTML = "";
+      return;
+    }
+
+    completedGoalsSection.classList.remove("hidden");
+    completedGoals.forEach((goal) => {
+      completedGoalsList.appendChild(createGoalCard(goal, { archived: true }));
+    });
+    attachGoalCardInteractions(completedGoalsList);
   }
 
   function renderTransactionsForSelectedGoal() {

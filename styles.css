@@ -59,6 +59,40 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
 
 .goals-list { display: grid; gap: 12px; }
 
+
+.completed-goals-section {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #fff6e6;
+  border: 2px dashed #f0c96a;
+}
+
+.completed-goals-section h3 {
+  margin: 0 0 10px;
+  text-align: center;
+  color: #7a5700;
+}
+
+.goal-card-completed {
+  background: #fff9ed;
+  border-color: #f2d488;
+  opacity: 0.95;
+}
+
+.goal-card-completed .progress-fill {
+  background: linear-gradient(90deg, #f6b73f 0%, #ffd76b 100%);
+}
+
+.goal-trophy-badge {
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #ffe7a8;
+}
+
+
 .coins-card {
   background: #f1fff5;
   border: 2px solid #c8f1d8;

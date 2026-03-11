@@ -392,10 +392,12 @@
 
   function getChildSummary(childProfileId) {
     const goals = state.goals.filter((goal) => goal.childProfileId === childProfileId);
+    const activeGoals = goals.filter((goal) => goal.status === "active");
     const goalIds = new Set(goals.map((goal) => goal.id));
     const childTransactions = state.transactions.filter((transaction) => goalIds.has(transaction.goalId));
 
     const totalBalance = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+    const activeBalance = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
     const totalMoneyIn = childTransactions
       .filter((transaction) => transaction.type === "in")
       .reduce((sum, transaction) => sum + transaction.amount, 0);
@@ -405,6 +407,7 @@
 
     return {
       totalBalance,
+      activeBalance,
       totalMoneyIn,
       totalMoneyOut,
       totalNetBalance: totalMoneyIn - totalMoneyOut,

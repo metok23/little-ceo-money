@@ -2,6 +2,12 @@
   const childHomeTitle = document.getElementById("child-home-title");
   const goalsList = document.getElementById("goals-list");
   const coinsTotal = document.getElementById("coins-total");
+  const coinsCard = coinsTotal ? coinsTotal.closest(".coins-card") : null;
+  const freeMoneyHint = document.createElement("p");
+  freeMoneyHint.className = "free-money-hint hidden";
+  if (coinsCard) {
+    coinsCard.appendChild(freeMoneyHint);
+  }
   const completedGoalsSection = document.getElementById("completed-goals-section");
   const completedGoalsList = document.getElementById("completed-goals-list");
 
@@ -155,7 +161,8 @@
   }
 
   function setActiveTab(tabId) {
-    currentTab = TAB_IDS[tabId] ? TAB_IDS[tabId] : TAB_IDS.activeGoals;
+    const allowedTabs = Object.values(TAB_IDS);
+    currentTab = allowedTabs.includes(tabId) ? tabId : TAB_IDS.activeGoals;
 
     const tabPanels = [
       [homeTabPanel, TAB_IDS.home],
@@ -180,11 +187,22 @@
     const activeChild = window.AppState.getActiveChild();
     if (!activeChild) {
       coinsTotal.textContent = "$0";
+      freeMoneyHint.classList.add("hidden");
+      freeMoneyHint.textContent = "";
       return;
     }
 
     const summary = window.AppState.getChildSummary(activeChild.id);
     coinsTotal.textContent = `$${summary.activeBalance}`;
+
+    const unassignedMoney = Number.isFinite(activeChild.unassignedMoney) ? activeChild.unassignedMoney : 0;
+    if (unassignedMoney > 0) {
+      freeMoneyHint.textContent = `Hi, you have $${unassignedMoney} free!`;
+      freeMoneyHint.classList.remove("hidden");
+    } else {
+      freeMoneyHint.classList.add("hidden");
+      freeMoneyHint.textContent = "";
+    }
   }
 
   function createGoalCard(goal, { selected = false, archived = false } = {}) {

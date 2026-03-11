@@ -19,6 +19,7 @@
         avatar: "🦄",
         birthDate: "2018-01-01",
         createdAt: "2024-01-01T00:00:00.000Z",
+        unassignedMoney: 0,
       },
       {
         id: "leo",
@@ -27,6 +28,7 @@
         avatar: "🦖",
         birthDate: "2018-06-01",
         createdAt: "2024-01-01T00:00:00.000Z",
+        unassignedMoney: 0,
       },
     ],
     goals: [
@@ -84,7 +86,9 @@
       childProfile.childName &&
       typeof childProfile.avatar === "string" &&
       typeof childProfile.birthDate === "string" &&
-      typeof childProfile.createdAt === "string"
+      typeof childProfile.createdAt === "string" &&
+      Number.isFinite(childProfile.unassignedMoney) &&
+      childProfile.unassignedMoney >= 0
     );
   }
 
@@ -145,6 +149,7 @@
         avatar: typeof child.avatar === "string" ? child.avatar : "🙂",
         birthDate: "",
         createdAt: now,
+        unassignedMoney: 0,
       }));
 
     if (childProfiles.length === 0) {
@@ -227,7 +232,13 @@
       if (users.length === 0) return structuredClone(defaultData);
 
       const userIds = new Set(users.map((user) => user.id));
-      const childProfiles = parsed.childProfiles.filter(isValidChildProfile).filter((childProfile) => userIds.has(childProfile.userId));
+      const childProfiles = parsed.childProfiles
+        .map((childProfile) => ({
+          ...childProfile,
+          unassignedMoney: Number.isFinite(childProfile.unassignedMoney) && childProfile.unassignedMoney >= 0 ? childProfile.unassignedMoney : 0,
+        }))
+        .filter(isValidChildProfile)
+        .filter((childProfile) => userIds.has(childProfile.userId));
       if (childProfiles.length === 0) return structuredClone(defaultData);
 
       const childProfileIds = new Set(childProfiles.map((childProfile) => childProfile.id));
@@ -279,6 +290,7 @@
       birthDate: childProfile.birthDate,
       createdAt: childProfile.createdAt,
       userId: childProfile.userId,
+      unassignedMoney: childProfile.unassignedMoney,
     };
   }
 
@@ -344,6 +356,10 @@
 
   function getRawGoalById(goalId) {
     return state.goals.find((goal) => goal.id === goalId) || null;
+  }
+
+  function getRawChildProfileById(childProfileId) {
+    return state.childProfiles.find((childProfile) => childProfile.id === childProfileId) || null;
   }
 
   function isGoalActive(goal) {
@@ -491,6 +507,13 @@
         completedGoals.push(goal.id);
       }
     });
+
+    if (remaining > 0) {
+      const childProfile = getRawChildProfileById(selectedGoal.childProfileId);
+      if (childProfile) {
+        childProfile.unassignedMoney += remaining;
+      }
+    }
 
     saveState();
 

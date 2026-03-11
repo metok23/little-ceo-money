@@ -368,13 +368,10 @@
 
   function getActiveGoalsFromSelected(goalId) {
     const selectedGoal = getRawGoalById(goalId);
-    if (!selectedGoal) return [];
+    if (!selectedGoal || !isGoalActive(selectedGoal)) return [];
 
     const childGoals = state.goals.filter((goal) => goal.childProfileId === selectedGoal.childProfileId && isGoalActive(goal));
-    const selectedIndex = childGoals.findIndex((goal) => goal.id === goalId);
-    if (selectedIndex < 0) return [];
-
-    return childGoals.slice(selectedIndex);
+    return [selectedGoal, ...childGoals.filter((goal) => goal.id !== selectedGoal.id)];
   }
 
   function getActiveGoalsForWithdrawal(goalId) {

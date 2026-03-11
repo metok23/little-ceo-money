@@ -1,14 +1,16 @@
 (function () {
   const childHomeTitle = document.getElementById("child-home-title");
   const goalsList = document.getElementById("goals-list");
-  const moneyInList = document.getElementById("money-in-list");
-  const moneyOutList = document.getElementById("money-out-list");
   const coinsTotal = document.getElementById("coins-total");
-  const parentNet = document.getElementById("parent-net");
-  const parentIn = document.getElementById("parent-in");
-  const parentOut = document.getElementById("parent-out");
   const completedGoalsSection = document.getElementById("completed-goals-section");
   const completedGoalsList = document.getElementById("completed-goals-list");
+
+  const homeTabPanel = document.getElementById("home-tab-panel");
+  const activeGoalsTabPanel = document.getElementById("active-goals-tab-panel");
+  const completedGoalsTabPanel = document.getElementById("completed-goals-tab-panel");
+  const earningTabPanel = document.getElementById("earning-tab-panel");
+  const childBottomNav = document.getElementById("child-bottom-nav");
+  const navTabButtons = childBottomNav ? Array.from(childBottomNav.querySelectorAll(".child-nav-tab")) : [];
 
   const switchProfileButton = document.getElementById("switch-profile");
   const openAddGoalModalButton = document.getElementById("open-add-goal-modal");
@@ -36,6 +38,14 @@
   const submitGoalButton = document.getElementById("submit-goal");
   const closeGoalModalButton = document.getElementById("close-goal-modal");
 
+  const TAB_IDS = {
+    home: "home",
+    activeGoals: "active-goals",
+    completedGoals: "completed-goals",
+    earning: "earning",
+  };
+
+  let currentTab = TAB_IDS.activeGoals;
   let selectedGoalId = null;
   let transactionMode = "in";
   let goalModalMode = "add";
@@ -46,16 +56,20 @@
     input.value = input.value.replace(/\D/g, "");
   }
 
-  function openTransactionModal(type) {
+  function getActiveChildGoals() {
     const activeChild = window.AppState.getActiveChild();
-    if (!activeChild) return;
+    if (!activeChild) return [];
 
-    const goals = window.AppState.getGoalsForChild(activeChild.id);
+    return window.AppState.getGoalsForChild(activeChild.id).filter((goal) => goal.status === "active");
+  }
+
+  function openTransactionModal(type) {
+    const goals = getActiveChildGoals();
     if (goals.length === 0) return;
 
     transactionMode = type;
     selectedGoalId = selectedGoalId && goals.some((goal) => goal.id === selectedGoalId) ? selectedGoalId : goals[0].id;
-    transactionModalTitle.textContent = type === "in" ? "Add Money In" : "Add Money Out";
+    transactionModalTitle.textContent = type === "in" ? "Money In" : "Money Out";
     transactionAmountInput.value = "";
     transactionModal.classList.remove("hidden");
     transactionModal.setAttribute("aria-hidden", "false");
@@ -126,22 +140,37 @@
     goalModal.setAttribute("aria-hidden", "true");
   }
 
+  function setActiveTab(tabId) {
+    currentTab = TAB_IDS[tabId] ? TAB_IDS[tabId] : TAB_IDS.activeGoals;
+
+    const tabPanels = [
+      [homeTabPanel, TAB_IDS.home],
+      [activeGoalsTabPanel, TAB_IDS.activeGoals],
+      [completedGoalsTabPanel, TAB_IDS.completedGoals],
+      [earningTabPanel, TAB_IDS.earning],
+    ];
+
+    tabPanels.forEach(([panel, id]) => {
+      if (!panel) return;
+      panel.classList.toggle("hidden", currentTab !== id);
+    });
+
+    navTabButtons.forEach((button) => {
+      const isActive = button.dataset.tab === currentTab;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+  }
 
   function renderBalancesForActiveChild() {
     const activeChild = window.AppState.getActiveChild();
     if (!activeChild) {
       coinsTotal.textContent = "$0";
-      parentNet.textContent = "$0";
-      parentIn.textContent = "$0";
-      parentOut.textContent = "$0";
       return;
     }
 
     const summary = window.AppState.getChildSummary(activeChild.id);
     coinsTotal.textContent = `$${summary.activeBalance}`;
-    parentNet.textContent = `$${summary.totalNetBalance}`;
-    parentIn.textContent = `$${summary.totalMoneyIn}`;
-    parentOut.textContent = `$${summary.totalMoneyOut}`;
   }
 
   function createGoalCard(goal, { selected = false, archived = false } = {}) {
@@ -179,6 +208,7 @@
     rootNode.querySelectorAll(".goal-card").forEach((card) => {
       card.addEventListener("click", () => {
         selectedGoalId = card.dataset.goalId;
+        currentTab = TAB_IDS.activeGoals;
         renderChildHome();
       });
     });
@@ -229,7 +259,7 @@
 
     if (completedGoals.length === 0) {
       completedGoalsSection.classList.add("hidden");
-      completedGoalsList.innerHTML = "";
+      completedGoalsList.innerHTML = '<p class="empty-hint">No completed goals yet</p>';
       return;
     }
 
@@ -240,46 +270,10 @@
     attachGoalCardInteractions(completedGoalsList);
   }
 
-  function renderTransactionsForSelectedGoal() {
-    moneyInList.innerHTML = "";
-    moneyOutList.innerHTML = "";
-
-    if (!selectedGoalId) {
-      moneyInList.innerHTML = '<li class="transaction-empty">Pick a goal</li>';
-      moneyOutList.innerHTML = '<li class="transaction-empty">Pick a goal</li>';
-      return;
-    }
-
-    const moneyIn = window.AppState.getTransactionsForGoal(selectedGoalId, "in").slice(0, 5);
-    const moneyOut = window.AppState.getTransactionsForGoal(selectedGoalId, "out").slice(0, 5);
-
-    if (moneyIn.length === 0) {
-      moneyInList.innerHTML = '<li class="transaction-empty">No money in yet</li>';
-    } else {
-      moneyIn.forEach((transaction) => {
-        const item = document.createElement("li");
-        item.className = "transaction-item transaction-in";
-        item.textContent = `+ $${transaction.amount}`;
-        moneyInList.appendChild(item);
-      });
-    }
-
-    if (moneyOut.length === 0) {
-      moneyOutList.innerHTML = '<li class="transaction-empty">No money out yet</li>';
-    } else {
-      moneyOut.forEach((transaction) => {
-        const item = document.createElement("li");
-        item.className = "transaction-item transaction-out";
-        item.textContent = `- $${transaction.amount}`;
-        moneyOutList.appendChild(item);
-      });
-    }
-  }
-
   function renderChildHome() {
     renderBalancesForActiveChild();
     renderGoalsForActiveChild();
-    renderTransactionsForSelectedGoal();
+    setActiveTab(currentTab);
   }
 
   function initChildHome({ onStateChange, onCelebrate }) {
@@ -287,6 +281,12 @@
       window.AppState.setActiveChildId(null);
       window.AppState.setCurrentScreen("child-picker");
       onStateChange();
+    });
+
+    navTabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setActiveTab(button.dataset.tab);
+      });
     });
 
     openAddGoalModalButton.addEventListener("click", openGoalModalForAdd);
@@ -415,6 +415,8 @@
       closeGoalModal();
       onStateChange();
     });
+
+    setActiveTab(TAB_IDS.activeGoals);
   }
 
   window.ChildHomeUI = {

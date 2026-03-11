@@ -60,6 +60,58 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
 .goals-list { display: grid; gap: 12px; }
 
 
+.child-tab-panel {
+  padding-bottom: 8px;
+}
+
+.child-bottom-nav {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  background: #f4f6ff;
+  border: 2px solid #d9e1ff;
+  border-radius: 16px;
+  padding: 8px;
+  position: sticky;
+  bottom: 8px;
+}
+
+.child-nav-tab {
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #49527d;
+  padding: 10px 6px;
+}
+
+.child-nav-tab.active {
+  background: #ffffff;
+  color: #24356f;
+  box-shadow: 0 4px 10px rgba(34, 56, 118, 0.14);
+}
+
+.earning-placeholder {
+  background: #f7f8ff;
+  border: 2px dashed #cfd8ff;
+  border-radius: 16px;
+  padding: 16px;
+  text-align: center;
+}
+
+.earning-placeholder h3 {
+  margin: 0 0 8px;
+}
+
+.earning-placeholder p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+
+
 .completed-goals-section {
   margin-top: 14px;
   padding: 12px;
@@ -114,23 +166,6 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
   color: #176440;
 }
 
-.parent-summary {
-  margin-bottom: 12px;
-  background: #f7f8ff;
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 0.95rem;
-}
-
-.parent-summary h3 {
-  margin: 0 0 6px;
-  font-size: 1rem;
-  color: #4b5a8b;
-}
-
-.parent-summary p {
-  margin: 4px 0;
-}
 
 .empty-hint { text-align: center; margin: 10px 0; }
 

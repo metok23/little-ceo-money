@@ -20,41 +20,46 @@
       <section id="child-home-screen" class="screen" aria-label="Child dashboard screen">
         <h2 id="child-home-title">Child Dashboard</h2>
 
-        <div class="coins-card" aria-label="Total child balance">
-          <p class="coins-label">🐷 Piggy Bank</p>
-          <p id="coins-total" class="coins-total">$0</p>
-        </div>
-
-        <div class="parent-summary" aria-label="Parent summary">
-          <h3>Parent Summary</h3>
-          <p>Net: <strong id="parent-net">$0</strong></p>
-          <p>Money In: <strong id="parent-in">$0</strong></p>
-          <p>Money Out: <strong id="parent-out">$0</strong></p>
-        </div>
-
-        <div id="goals-list" class="goals-list" aria-label="Active child goals"></div>
-
-        <section id="completed-goals-section" class="completed-goals-section" aria-label="Completed goals">
-          <h3>🏆 Completed Goals</h3>
-          <div id="completed-goals-list" class="goals-list completed-goals-list"></div>
+        <section id="home-tab-panel" class="child-tab-panel hidden" aria-label="Home tab">
+          <p class="empty-hint">Welcome! Choose what you want to do.</p>
+          <button id="switch-profile" class="big-button secondary">👤 Change Profile</button>
         </section>
 
-        <button id="open-add-goal-modal" class="big-button secondary">🎯 Add Goal</button>
-        <button id="open-money-in-modal" class="big-button primary">➕ Add Money In</button>
-        <button id="open-money-out-modal" class="big-button danger">➖ Add Money Out</button>
+        <section id="active-goals-tab-panel" class="child-tab-panel" aria-label="Active goals tab">
+          <div class="coins-card" aria-label="Active goals piggy bank">
+            <p class="coins-label">🐷 Piggy Bank</p>
+            <p id="coins-total" class="coins-total">$0</p>
+          </div>
 
-        <div class="transactions-card" aria-label="Money In transactions">
-          <h3>Money In</h3>
-          <ul id="money-in-list" class="transactions-list"></ul>
-        </div>
+          <div id="goals-list" class="goals-list" aria-label="Active child goals"></div>
 
-        <div class="transactions-card" aria-label="Money Out transactions">
-          <h3>Money Out</h3>
-          <ul id="money-out-list" class="transactions-list"></ul>
-        </div>
+          <button id="open-add-goal-modal" class="big-button secondary">🎯 Add Goal</button>
+          <button id="open-money-in-modal" class="big-button primary">➕ Money In</button>
+          <button id="open-money-out-modal" class="big-button danger">➖ Money Out</button>
+        </section>
 
-        <button id="switch-profile" class="big-button secondary">👤 Change Profile</button>
+        <section id="completed-goals-tab-panel" class="child-tab-panel hidden" aria-label="Completed goals tab">
+          <section id="completed-goals-section" class="completed-goals-section" aria-label="Completed goals">
+            <h3>🏆 Completed Goals</h3>
+            <div id="completed-goals-list" class="goals-list completed-goals-list"></div>
+          </section>
+        </section>
+
+        <section id="earning-tab-panel" class="child-tab-panel hidden" aria-label="Earning tab">
+          <div class="earning-placeholder">
+            <h3>💼 Earning</h3>
+            <p>Coming soon: chores, gifts, lemonade stand and more.</p>
+          </div>
+        </section>
+
+        <nav id="child-bottom-nav" class="child-bottom-nav" aria-label="Child bottom navigation">
+          <button class="child-nav-tab" data-tab="home" aria-selected="false">🏠 Home</button>
+          <button class="child-nav-tab active" data-tab="active-goals" aria-selected="true">🎯 Active Goals</button>
+          <button class="child-nav-tab" data-tab="completed-goals" aria-selected="false">🏆 Completed</button>
+          <button class="child-nav-tab" data-tab="earning" aria-selected="false">💼 Earning</button>
+        </nav>
       </section>
+
 
       <section id="celebration-screen" class="screen" aria-label="Goal Celebration screen">
         <h2>🎉 You Did It! 🎉</h2>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Little CEO Money</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-live="polite">
+      <header class="app-header">
+        <h1>💰 Little CEO Money</h1>
+      </header>
+
+      <section id="child-picker-screen" class="screen active" aria-label="Choose child screen">
+        <h2>Choose Child</h2>
+        <div id="child-profile-picker" class="child-picker" role="group" aria-label="Choose child profile"></div>
+      </section>
+
+      <section id="child-home-screen" class="screen" aria-label="Child dashboard screen">
+        <h2 id="child-home-title">Child Dashboard</h2>
+
+        <div class="coins-card" aria-label="Total child balance">
+          <p class="coins-label">🐷 Piggy Bank</p>
+          <p id="coins-total" class="coins-total">$0</p>
+        </div>
+
+        <div class="parent-summary" aria-label="Parent summary">
+          <h3>Parent Summary</h3>
+          <p>Net: <strong id="parent-net">$0</strong></p>
+          <p>Money In: <strong id="parent-in">$0</strong></p>
+          <p>Money Out: <strong id="parent-out">$0</strong></p>
+        </div>
+
+        <div id="goals-list" class="goals-list" aria-label="Active child goals"></div>
+
+        <section id="completed-goals-section" class="completed-goals-section" aria-label="Completed goals">
+          <h3>🏆 Completed Goals</h3>
+          <div id="completed-goals-list" class="goals-list completed-goals-list"></div>
+        </section>
+
+        <button id="open-add-goal-modal" class="big-button secondary">🎯 Add Goal</button>
+        <button id="open-money-in-modal" class="big-button primary">➕ Add Money In</button>
+        <button id="open-money-out-modal" class="big-button danger">➖ Add Money Out</button>
+
+        <div class="transactions-card" aria-label="Money In transactions">
+          <h3>Money In</h3>
+          <ul id="money-in-list" class="transactions-list"></ul>
+        </div>
+
+        <div class="transactions-card" aria-label="Money Out transactions">
+          <h3>Money Out</h3>
+          <ul id="money-out-list" class="transactions-list"></ul>
+        </div>
+
+        <button id="switch-profile" class="big-button secondary">👤 Change Profile</button>
+      </section>
+
+      <section id="celebration-screen" class="screen" aria-label="Goal Celebration screen">
+        <h2>🎉 You Did It! 🎉</h2>
+        <p id="celebration-message" class="celebration-message"></p>
+        <div class="celebration-emoji" aria-hidden="true">🎊 🥳 🎁 🌟</div>
+        <button id="celebration-done" class="big-button primary">🏠 Back to Dashboard</button>
+      </section>
+    </main>
+
+    <div id="transaction-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-label="Money transaction modal">
+        <h2 id="transaction-modal-title">Add Money</h2>
+        <p class="helper">Type amount:</p>
+
+        <label for="transaction-amount-input" class="amount-label">💵 Amount</label>
+        <input id="transaction-amount-input" class="amount-input" type="number" min="1" step="1" inputmode="numeric" placeholder="5" />
+
+        <div class="modal-actions">
+          <button id="submit-transaction" class="big-button primary">✅ Save</button>
+          <button id="close-transaction-modal" class="big-button secondary">✖ Close</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="goal-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-label="Goal modal">
+        <h2 id="goal-modal-title">Add Goal</h2>
+
+        <label for="goal-name-input" class="amount-label">Name</label>
+        <input id="goal-name-input" class="amount-input small-input" type="text" maxlength="20" placeholder="Bike" />
+
+        <label for="goal-target-input" class="amount-label">Target</label>
+        <input id="goal-target-input" class="amount-input small-input" type="number" min="1" step="1" inputmode="numeric" placeholder="50" />
+
+        <label for="goal-icon-input" class="amount-label">Icon</label>
+        <input id="goal-icon-input" class="amount-input small-input" type="text" maxlength="2" placeholder="🚲" />
+
+        <div class="modal-actions">
+          <button id="submit-goal" class="big-button primary">✅ Save Goal</button>
+          <button id="close-goal-modal" class="big-button secondary">✖ Close</button>
+        </div>
+      </section>
+    </div>
+
+
+    <div id="cross-goal-confirm-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-label="Cross goal confirmation modal">
+        <h2>Use money from other goals?</h2>
+        <p class="helper">There is not enough money in this goal. Do you want to use money from other goals?</p>
+
+        <div class="modal-actions">
+          <button id="confirm-cross-goal-yes" class="big-button primary">Yes</button>
+          <button id="confirm-cross-goal-no" class="big-button secondary">No</button>
+        </div>
+      </section>
+    </div>
+
+
+    <div id="insufficient-funds-modal" class="modal-backdrop hidden" aria-hidden="true">
+      <section class="modal" role="dialog" aria-modal="true" aria-label="Insufficient funds modal">
+        <h2>Not enough money</h2>
+        <p class="helper">You don’t have enough money in your goals.</p>
+
+        <div class="modal-actions">
+          <button id="close-insufficient-funds-modal" class="big-button primary">OK</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="state.js"></script>
+    <script src="ui-child-picker.js"></script>
+    <script src="ui-child-home.js"></script>
+    <script src="ui-parent-panel.js"></script>
+    <script src="main.js"></script>
+  </body>
+</html>

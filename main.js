@@ -1,5 +1,6 @@
 (function () {
   const screens = {
+    welcome: document.getElementById("welcome-screen"),
     "child-picker": document.getElementById("child-picker-screen"),
     "child-home": document.getElementById("child-home-screen"),
     celebration: document.getElementById("celebration-screen"),
@@ -7,6 +8,7 @@
 
   const celebrationMessage = document.getElementById("celebration-message");
   const celebrationDoneButton = document.getElementById("celebration-done");
+  const startBtn = document.getElementById("start-adventure-button");
 
   function showScreen(screenName) {
     Object.entries(screens).forEach(([name, element]) => {
@@ -16,7 +18,11 @@
   }
 
   function enforceSafeScreen() {
-    if (!window.AppState.getActiveChild() && window.AppState.state.currentScreen !== "child-picker") {
+    if (
+      !window.AppState.getActiveChild() &&
+      window.AppState.state.currentScreen !== "child-picker" &&
+      window.AppState.state.currentScreen !== "welcome"
+    ) {
       window.AppState.setCurrentScreen("child-picker");
     }
   }
@@ -52,6 +58,13 @@
     if (celebrationDoneButton) {
       celebrationDoneButton.addEventListener("click", () => {
         window.AppState.setCurrentScreen("child-home");
+        renderApp();
+      });
+    }
+
+    if (startBtn) {
+      startBtn.addEventListener("click", () => {
+        window.AppState.setCurrentScreen("child-picker");
         renderApp();
       });
     }

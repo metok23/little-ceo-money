@@ -1,6 +1,6 @@
 (function () {
   const STORAGE_KEY = "little-ceo-money-data-v2";
-  const VALID_SCREENS = ["child-picker", "child-home", "celebration"];
+  const VALID_SCREENS = ["welcome", "child-picker", "child-home", "celebration"];
 
   const defaultData = {
     users: [
@@ -56,7 +56,7 @@
       },
     ],
     transactions: [],
-    currentScreen: "child-picker",
+    currentScreen: "welcome",
     activeChildProfileId: null,
   };
 

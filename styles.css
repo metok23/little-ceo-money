@@ -292,7 +292,7 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
 }
 .primary { background: var(--primary); color: #fff; }
 .primary:active { background: var(--primary-pressed); }
-.secondary { background: var(--secondary); color: #5a4700; }
+.secondary { background: var(--secondary); color: #fff9e3; }
 .secondary:active { background: var(--secondary-pressed); }
 .danger { background: var(--danger); color: #fff; }
 .danger:active { background: var(--danger-pressed); }

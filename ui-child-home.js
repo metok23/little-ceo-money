@@ -140,6 +140,20 @@
     goalModal.setAttribute("aria-hidden", "true");
   }
 
+  function ensureMoneyActionRow() {
+    const existingRow = document.querySelector(".money-actions-row");
+    if (existingRow) return;
+
+    const parent = openMoneyInModalButton.parentElement;
+    if (!parent || openMoneyInModalButton.parentElement !== openMoneyOutModalButton.parentElement) return;
+
+    const row = document.createElement("div");
+    row.className = "money-actions-row";
+    parent.insertBefore(row, openMoneyInModalButton);
+    row.appendChild(openMoneyInModalButton);
+    row.appendChild(openMoneyOutModalButton);
+  }
+
   function setActiveTab(tabId) {
     currentTab = TAB_IDS[tabId] ? TAB_IDS[tabId] : TAB_IDS.activeGoals;
 
@@ -204,11 +218,13 @@
     return card;
   }
 
-  function attachGoalCardInteractions(rootNode) {
+  function attachGoalCardInteractions(rootNode, { switchToActiveTab = false } = {}) {
     rootNode.querySelectorAll(".goal-card").forEach((card) => {
       card.addEventListener("click", () => {
         selectedGoalId = card.dataset.goalId;
-        currentTab = TAB_IDS.activeGoals;
+        if (switchToActiveTab) {
+          currentTab = TAB_IDS.activeGoals;
+        }
         renderChildHome();
       });
     });
@@ -254,7 +270,7 @@
       activeGoals.forEach((goal) => {
         goalsList.appendChild(createGoalCard(goal, { selected: goal.id === selectedGoalId }));
       });
-      attachGoalCardInteractions(goalsList);
+      attachGoalCardInteractions(goalsList, { switchToActiveTab: true });
     }
 
     if (completedGoals.length === 0) {
@@ -277,6 +293,8 @@
   }
 
   function initChildHome({ onStateChange, onCelebrate }) {
+    ensureMoneyActionRow();
+
     switchProfileButton.addEventListener("click", () => {
       window.AppState.setActiveChildId(null);
       window.AppState.setCurrentScreen("child-picker");

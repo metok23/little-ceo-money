@@ -64,8 +64,48 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
   padding-bottom: 8px;
 }
 
+
+#child-home-screen {
+  padding-bottom: 96px;
+}
+
+.money-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.money-actions-row .big-button {
+  margin-top: 0;
+}
+
+#open-money-in-modal {
+  background: #2fc37a;
+  color: #ffffff;
+}
+
+#open-money-in-modal:active {
+  background: #25aa69;
+}
+
+#open-money-out-modal {
+  background: #ff6b74;
+  color: #ffffff;
+}
+
+#open-money-out-modal:active {
+  background: #e35661;
+}
+
 .child-bottom-nav {
-  margin-top: 14px;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 8px;
+  z-index: 900;
+  width: calc(100% - 32px);
+  max-width: 398px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
@@ -73,8 +113,6 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
   border: 2px solid #d9e1ff;
   border-radius: 16px;
   padding: 8px;
-  position: sticky;
-  bottom: 8px;
 }
 
 .child-nav-tab {

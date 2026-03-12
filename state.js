@@ -1,6 +1,7 @@
 (function () {
   const STORAGE_KEY = "little-ceo-money-data-v2";
   const VALID_SCREENS = ["welcome", "child-picker", "child-home", "celebration"];
+  const VALID_BUCKET_TYPES = ["pool", "spend", "save", "invest", "donate"];
 
   const defaultData = {
     users: [
@@ -112,6 +113,13 @@
   }
 
   function isValidTransaction(transaction) {
+    const createdAt = typeof transaction?.createdAt === "string" ? transaction.createdAt : transaction?.transactionDate;
+    const goalIdValid = transaction?.goalId === null || typeof transaction?.goalId === "string";
+    const bucketTypeValid =
+      transaction?.bucketType === null ||
+      typeof transaction?.bucketType === "undefined" ||
+      VALID_BUCKET_TYPES.includes(transaction?.bucketType);
+
     return (
       transaction &&
       typeof transaction === "object" &&
@@ -119,15 +127,17 @@
       transaction.id &&
       typeof transaction.childProfileId === "string" &&
       transaction.childProfileId &&
-      typeof transaction.goalId === "string" &&
-      transaction.goalId &&
-      typeof transaction.transactionDate === "string" &&
+      goalIdValid &&
+      bucketTypeValid &&
+      typeof createdAt === "string" &&
       Number.isFinite(transaction.amount) &&
       transaction.amount > 0 &&
-      (transaction.type === "in" || transaction.type === "out") &&
-      typeof transaction.source === "string" &&
-      typeof transaction.category === "string" &&
-      typeof transaction.note === "string"
+      typeof transaction.type === "string" &&
+      transaction.type &&
+      (typeof transaction.label === "string" || typeof transaction.label === "undefined" || transaction.label === null) &&
+      (typeof transaction.source === "string" || typeof transaction.source === "undefined") &&
+      (typeof transaction.category === "string" || typeof transaction.category === "undefined") &&
+      (typeof transaction.note === "string" || typeof transaction.note === "undefined")
     );
   }
 
@@ -186,9 +196,12 @@
         id: typeof transaction.id === "string" && transaction.id ? transaction.id : `txn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         childProfileId: goalChildMap.get(transaction.goalId),
         goalId: transaction.goalId,
+        bucketType: null,
+        createdAt: typeof transaction.date === "string" && transaction.date ? transaction.date : now,
         transactionDate: typeof transaction.date === "string" && transaction.date ? transaction.date : now,
         amount: Number.isFinite(transaction.amount) && transaction.amount > 0 ? transaction.amount : 0,
         type: transaction.type === "out" ? "out" : "in",
+        label: "Legacy import",
         source: "manual",
         category: "general",
         note: "",
@@ -254,8 +267,33 @@
       const goalChildMap = new Map(goals.map((goal) => [goal.id, goal.childProfileId]));
       const transactions = parsed.transactions
         .filter(isValidTransaction)
-        .filter((transaction) => goalIds.has(transaction.goalId))
-        .filter((transaction) => goalChildMap.get(transaction.goalId) === transaction.childProfileId);
+        .map((transaction) => ({
+          ...transaction,
+          goalId: typeof transaction.goalId === "undefined" ? null : transaction.goalId,
+          bucketType: typeof transaction.bucketType === "undefined" ? null : transaction.bucketType,
+          createdAt:
+            typeof transaction.createdAt === "string" && transaction.createdAt
+              ? transaction.createdAt
+              : typeof transaction.transactionDate === "string" && transaction.transactionDate
+                ? transaction.transactionDate
+                : new Date().toISOString(),
+          label: typeof transaction.label === "string" ? transaction.label : "",
+          transactionDate:
+            typeof transaction.transactionDate === "string" && transaction.transactionDate
+              ? transaction.transactionDate
+              : typeof transaction.createdAt === "string" && transaction.createdAt
+                ? transaction.createdAt
+                : new Date().toISOString(),
+          source: typeof transaction.source === "string" ? transaction.source : "manual",
+          category: typeof transaction.category === "string" ? transaction.category : "general",
+          note: typeof transaction.note === "string" ? transaction.note : "",
+        }))
+        .filter((transaction) => transaction.goalId === null || goalIds.has(transaction.goalId))
+        .filter((transaction) =>
+          transaction.goalId === null
+            ? childProfileIds.has(transaction.childProfileId)
+            : goalChildMap.get(transaction.goalId) === transaction.childProfileId
+        );
 
       const requestedScreen = VALID_SCREENS.includes(parsed.currentScreen) ? parsed.currentScreen : "child-picker";
       const activeChildProfileId = childProfiles.some((profile) => profile.id === parsed.activeChildProfileId)
@@ -312,14 +350,18 @@
   }
 
   function normalizeTransactionForUI(transaction) {
+    const createdAt = transaction.createdAt || transaction.transactionDate;
     return {
       id: transaction.id,
       childProfileId: transaction.childProfileId,
-      goalId: transaction.goalId,
-      date: transaction.transactionDate,
-      transactionDate: transaction.transactionDate,
+      goalId: transaction.goalId ?? null,
+      bucketType: transaction.bucketType ?? null,
+      date: createdAt,
+      createdAt,
+      transactionDate: createdAt,
       amount: transaction.amount,
       type: transaction.type,
+      label: transaction.label || "",
       source: transaction.source,
       category: transaction.category,
       note: transaction.note,
@@ -382,14 +424,18 @@
     return [selectedGoal, ...childGoals.filter((goal) => goal.id !== selectedGoal.id)];
   }
 
-  function pushTransaction(goalId, childProfileId, type, amount) {
+  function pushTransaction({ childProfileId, goalId = null, bucketType = null, type, amount, label = "" }) {
+    const createdAt = new Date().toISOString();
     state.transactions.push({
       id: `txn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       childProfileId,
       goalId,
-      transactionDate: new Date().toISOString(),
+      bucketType,
+      createdAt,
+      transactionDate: createdAt,
       amount,
       type,
+      label,
       source: "manual",
       category: "general",
       note: "",
@@ -468,15 +514,56 @@
     return normalizeGoalForUI(goal);
   }
 
-  function addMoneyToGoals({ goalId, amount }) {
+
+  function getChildUnassignedMoney(childProfileId) {
+    const childProfile = getRawChildProfileById(childProfileId);
+    if (!childProfile || !Number.isFinite(childProfile.unassignedMoney)) return 0;
+    return Math.max(0, childProfile.unassignedMoney);
+  }
+
+  function addMoneyToPool(childProfileId, amount, label = "Money In") {
+    const childProfile = getRawChildProfileById(childProfileId);
+    if (!childProfile || !Number.isInteger(amount) || amount <= 0) {
+      return { ok: false, error: "INVALID_INPUT" };
+    }
+
+    childProfile.unassignedMoney += amount;
+    pushTransaction({
+      childProfileId,
+      goalId: null,
+      bucketType: "pool",
+      type: "in",
+      amount,
+      label,
+    });
+
+    saveState();
+    return { ok: true, childProfile: normalizeChildProfileForUI(childProfile) };
+  }
+
+  function allocatePoolMoneyToGoal(childProfileId, goalId, amount) {
+    const childProfile = getRawChildProfileById(childProfileId);
     const selectedGoal = getRawGoalById(goalId);
-    if (!selectedGoal || !Number.isInteger(amount) || amount <= 0) {
+
+    if (
+      !childProfile ||
+      !selectedGoal ||
+      selectedGoal.childProfileId !== childProfileId ||
+      !Number.isInteger(amount) ||
+      amount <= 0
+    ) {
       return { ok: false, error: "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
     }
 
     if (!isGoalActive(selectedGoal)) {
       return { ok: false, error: "GOAL_COMPLETED", appliedTransactions: [], overflow: amount, completedGoals: [] };
     }
+
+    if (amount > getChildUnassignedMoney(childProfileId)) {
+      return { ok: false, error: "INSUFFICIENT_POOL_FUNDS", appliedTransactions: [], overflow: amount, completedGoals: [] };
+    }
+
+    childProfile.unassignedMoney -= amount;
 
     let remaining = amount;
     const goalSequence = getActiveGoalsFromSelected(goalId);
@@ -494,7 +581,14 @@
       remaining -= applied;
 
       if (applied > 0) {
-        pushTransaction(goal.id, goal.childProfileId, "in", applied);
+        pushTransaction({
+          childProfileId: goal.childProfileId,
+          goalId: goal.id,
+          bucketType: "save",
+          type: "in",
+          amount: applied,
+          label: "Goal allocation",
+        });
         appliedTransactions.push({ goalId: goal.id, amount: applied });
       }
 
@@ -506,11 +600,17 @@
     });
 
     if (remaining > 0) {
-      const childProfile = getRawChildProfileById(selectedGoal.childProfileId);
-      if (childProfile) {
-        childProfile.unassignedMoney += remaining;
-      }
+      childProfile.unassignedMoney += remaining;
     }
+
+    pushTransaction({
+      childProfileId,
+      goalId,
+      bucketType: "save",
+      type: "allocate",
+      amount,
+      label: "Pool allocation",
+    });
 
     saveState();
 
@@ -520,6 +620,21 @@
       overflow: remaining,
       completedGoals,
     };
+  }
+
+  function addMoneyToGoals({ goalId, amount }) {
+    // Legacy/deprecated: prefer addMoneyToPool + allocatePoolMoneyToGoal.
+    const selectedGoal = getRawGoalById(goalId);
+    if (!selectedGoal || !Number.isInteger(amount) || amount <= 0) {
+      return { ok: false, error: "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
+    }
+
+    const poolResult = addMoneyToPool(selectedGoal.childProfileId, amount, "Money In");
+    if (!poolResult.ok) {
+      return { ok: false, error: poolResult.error || "INVALID_INPUT", appliedTransactions: [], overflow: amount, completedGoals: [] };
+    }
+
+    return allocatePoolMoneyToGoal(selectedGoal.childProfileId, goalId, amount);
   }
 
   function withdrawMoneyFromGoals({ goalId, amount, allowCrossGoal }) {
@@ -556,7 +671,7 @@
       goal.currentAmount -= deducted;
       remaining -= deducted;
 
-      pushTransaction(goal.id, goal.childProfileId, "out", deducted);
+      pushTransaction({ childProfileId: goal.childProfileId, goalId: goal.id, bucketType: "save", type: "out", amount: deducted, label: "Money Out" });
       deductions.push({ goalId: goal.id, amount: deducted });
     });
 
@@ -613,6 +728,9 @@
     getGoalById,
     getTransactionsForGoal,
     getChildSummary,
+    getChildUnassignedMoney,
+    addMoneyToPool,
+    allocatePoolMoneyToGoal,
     addGoalForActiveChild,
     updateGoal,
     addMoneyToGoals,

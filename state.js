@@ -450,13 +450,15 @@
   }
 
   function getChildSummary(childProfileId) {
+    const childProfile = getRawChildProfileById(childProfileId);
+    const poolMoney = childProfile && Number.isFinite(childProfile.unassignedMoney) ? childProfile.unassignedMoney : 0;
+
     const goals = state.goals.filter((goal) => goal.childProfileId === childProfileId);
     const activeGoals = goals.filter((goal) => goal.status === "active");
-    const goalIds = new Set(goals.map((goal) => goal.id));
-    const childTransactions = state.transactions.filter((transaction) => goalIds.has(transaction.goalId));
+    const childTransactions = state.transactions.filter((transaction) => transaction.childProfileId === childProfileId);
 
-    const totalBalance = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
-    const activeBalance = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+    const totalBalance = goals.reduce((sum, goal) => sum + goal.currentAmount, 0) + poolMoney;
+    const activeBalance = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0) + poolMoney;
     const totalMoneyIn = childTransactions
       .filter((transaction) => transaction.type === "in")
       .reduce((sum, transaction) => sum + transaction.amount, 0);
@@ -585,7 +587,7 @@
           childProfileId: goal.childProfileId,
           goalId: goal.id,
           bucketType: "save",
-          type: "in",
+          type: "allocate",
           amount: applied,
           label: "Goal allocation",
         });
@@ -602,15 +604,6 @@
     if (remaining > 0) {
       childProfile.unassignedMoney += remaining;
     }
-
-    pushTransaction({
-      childProfileId,
-      goalId,
-      bucketType: "save",
-      type: "allocate",
-      amount,
-      label: "Pool allocation",
-    });
 
     saveState();
 

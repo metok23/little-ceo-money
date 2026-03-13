@@ -202,7 +202,12 @@
     panel.appendChild(grid);
     panel.appendChild(investHelper);
 
-    activeGoalsTabPanel.insertBefore(panel, completedGoalsSection || goalsList);
+    if (goalsList && goalsList.parentElement === activeGoalsTabPanel) {
+      activeGoalsTabPanel.insertBefore(panel, goalsList);
+    } else {
+      activeGoalsTabPanel.appendChild(panel);
+    }
+
     return panel;
   }
 

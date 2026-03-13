@@ -2,6 +2,54 @@
   const STORAGE_KEY = "little-ceo-money-data-v2";
   const VALID_SCREENS = ["welcome", "child-picker", "child-home", "celebration"];
   const VALID_BUCKET_TYPES = ["pool", "spend", "save", "invest", "donate"];
+  const WALLET_BUCKET_TYPES = ["spend", "save", "invest", "donate"];
+
+  function createDefaultWalletBuckets(childProfiles) {
+    return childProfiles.flatMap((childProfile) =>
+      WALLET_BUCKET_TYPES.map((bucketType) => ({
+        id: `bucket-${childProfile.id}-${bucketType}`,
+        childProfileId: childProfile.id,
+        bucketType,
+        balance: 0,
+      }))
+    );
+  }
+
+  function ensureWalletBuckets(childProfiles, walletBuckets) {
+    const childProfileIds = new Set(childProfiles.map((childProfile) => childProfile.id));
+    const normalizedBuckets = Array.isArray(walletBuckets) ? walletBuckets.filter((bucket) => isValidWalletBucket(bucket)) : [];
+    const byKey = new Map();
+
+    normalizedBuckets.forEach((bucket) => {
+      if (!childProfileIds.has(bucket.childProfileId)) return;
+      const key = `${bucket.childProfileId}::${bucket.bucketType}`;
+      if (byKey.has(key)) return;
+      byKey.set(key, {
+        id: bucket.id,
+        childProfileId: bucket.childProfileId,
+        bucketType: bucket.bucketType,
+        balance: bucket.balance,
+      });
+    });
+
+    childProfiles.forEach((childProfile) => {
+      WALLET_BUCKET_TYPES.forEach((bucketType) => {
+        const key = `${childProfile.id}::${bucketType}`;
+        if (!byKey.has(key)) {
+          byKey.set(key, {
+            id: `bucket-${childProfile.id}-${bucketType}`,
+            childProfileId: childProfile.id,
+            bucketType,
+            balance: 0,
+          });
+        }
+      });
+    });
+
+    return childProfiles.flatMap((childProfile) =>
+      WALLET_BUCKET_TYPES.map((bucketType) => byKey.get(`${childProfile.id}::${bucketType}`))
+    );
+  }
 
   const defaultData = {
     users: [
@@ -57,6 +105,10 @@
       },
     ],
     transactions: [],
+    walletBuckets: createDefaultWalletBuckets([
+      { id: "ava" },
+      { id: "leo" },
+    ]),
     currentScreen: "welcome",
     activeChildProfileId: null,
   };
@@ -109,6 +161,20 @@
       typeof goal.goalImage === "string" &&
       typeof goal.startDate === "string" &&
       typeof goal.endDate === "string"
+    );
+  }
+
+  function isValidWalletBucket(bucket) {
+    return (
+      bucket &&
+      typeof bucket === "object" &&
+      typeof bucket.id === "string" &&
+      bucket.id &&
+      typeof bucket.childProfileId === "string" &&
+      bucket.childProfileId &&
+      WALLET_BUCKET_TYPES.includes(bucket.bucketType) &&
+      Number.isFinite(bucket.balance) &&
+      bucket.balance >= 0
     );
   }
 
@@ -216,6 +282,7 @@
       childProfiles,
       goals,
       transactions,
+      walletBuckets: ensureWalletBuckets(childProfiles, []),
       currentScreen: activeChildProfileId ? requestedScreen : "child-picker",
       activeChildProfileId,
     };
@@ -295,6 +362,8 @@
             : goalChildMap.get(transaction.goalId) === transaction.childProfileId
         );
 
+      const walletBuckets = ensureWalletBuckets(childProfiles, parsed.walletBuckets);
+
       const requestedScreen = VALID_SCREENS.includes(parsed.currentScreen) ? parsed.currentScreen : "child-picker";
       const activeChildProfileId = childProfiles.some((profile) => profile.id === parsed.activeChildProfileId)
         ? parsed.activeChildProfileId
@@ -305,6 +374,7 @@
         childProfiles,
         goals,
         transactions,
+        walletBuckets,
         currentScreen: activeChildProfileId ? requestedScreen : "child-picker",
         activeChildProfileId,
       };
@@ -404,6 +474,26 @@
     return state.childProfiles.find((childProfile) => childProfile.id === childProfileId) || null;
   }
 
+  function getRawBucketByType(childProfileId, bucketType) {
+    return (
+      state.walletBuckets.find(
+        (bucket) => bucket.childProfileId === childProfileId && bucket.bucketType === bucketType
+      ) || null
+    );
+  }
+
+  function getBucketsForChild(childProfileId) {
+    return state.walletBuckets
+      .filter((bucket) => bucket.childProfileId === childProfileId)
+      .sort((a, b) => WALLET_BUCKET_TYPES.indexOf(a.bucketType) - WALLET_BUCKET_TYPES.indexOf(b.bucketType))
+      .map((bucket) => ({ ...bucket }));
+  }
+
+  function getBucketByType(childProfileId, bucketType) {
+    const bucket = getRawBucketByType(childProfileId, bucketType);
+    return bucket ? { ...bucket } : null;
+  }
+
   function isGoalActive(goal) {
     return goal && goal.status === "active";
   }
@@ -449,16 +539,44 @@
       .map(normalizeTransactionForUI);
   }
 
-  function getChildSummary(childProfileId) {
+  function getChildMoneyWorld(childProfileId) {
     const childProfile = getRawChildProfileById(childProfileId);
     const poolMoney = childProfile && Number.isFinite(childProfile.unassignedMoney) ? childProfile.unassignedMoney : 0;
 
-    const goals = state.goals.filter((goal) => goal.childProfileId === childProfileId);
-    const activeGoals = goals.filter((goal) => goal.status === "active");
+    const bucketsForChild = getBucketsForChild(childProfileId);
+    const buckets = {
+      spend: 0,
+      save: 0,
+      invest: 0,
+      donate: 0,
+    };
+
+    bucketsForChild.forEach((bucket) => {
+      buckets[bucket.bucketType] = bucket.balance;
+    });
+
+    const goalsBalance = state.goals
+      .filter((goal) => goal.childProfileId === childProfileId)
+      .reduce((sum, goal) => sum + goal.currentAmount, 0);
+
+    const totalBalance = poolMoney + buckets.spend + buckets.save + buckets.invest + buckets.donate;
+
+    return {
+      poolMoney,
+      totalBalance,
+      buckets,
+      goalsBalance,
+      spendBucketBalance: buckets.spend,
+      saveBucketBalance: buckets.save,
+      investBucketBalance: buckets.invest,
+      donateBucketBalance: buckets.donate,
+    };
+  }
+
+  function getChildSummary(childProfileId) {
+    const moneyWorld = getChildMoneyWorld(childProfileId);
     const childTransactions = state.transactions.filter((transaction) => transaction.childProfileId === childProfileId);
 
-    const totalBalance = goals.reduce((sum, goal) => sum + goal.currentAmount, 0) + poolMoney;
-    const activeBalance = activeGoals.reduce((sum, goal) => sum + goal.currentAmount, 0) + poolMoney;
     const totalMoneyIn = childTransactions
       .filter((transaction) => transaction.type === "in")
       .reduce((sum, transaction) => sum + transaction.amount, 0);
@@ -467,8 +585,8 @@
       .reduce((sum, transaction) => sum + transaction.amount, 0);
 
     return {
-      totalBalance,
-      activeBalance,
+      totalBalance: moneyWorld.totalBalance,
+      activeBalance: moneyWorld.totalBalance,
       totalMoneyIn,
       totalMoneyOut,
       totalNetBalance: totalMoneyIn - totalMoneyOut,
@@ -543,32 +661,71 @@
     return { ok: true, childProfile: normalizeChildProfileForUI(childProfile) };
   }
 
-  function allocatePoolMoneyToGoal(childProfileId, goalId, amount) {
+  function allocatePoolMoneyToBucket(childProfileId, bucketType, amount, options = {}) {
     const childProfile = getRawChildProfileById(childProfileId);
-    const selectedGoal = getRawGoalById(goalId);
+    const bucket = getRawBucketByType(childProfileId, bucketType);
 
-    if (
-      !childProfile ||
-      !selectedGoal ||
-      selectedGoal.childProfileId !== childProfileId ||
-      !Number.isInteger(amount) ||
-      amount <= 0
-    ) {
+    if (!childProfile || !bucket || !Number.isInteger(amount) || amount <= 0) {
+      return { ok: false, error: "INVALID_INPUT" };
+    }
+
+    const poolMoney = getChildUnassignedMoney(childProfileId);
+    if (amount > poolMoney) {
+      return { ok: false, error: "INSUFFICIENT_POOL_FUNDS" };
+    }
+
+    childProfile.unassignedMoney -= amount;
+    bucket.balance += amount;
+
+    pushTransaction({
+      childProfileId,
+      goalId: null,
+      bucketType,
+      type: "allocate",
+      amount,
+      label: "Bucket allocation",
+    });
+
+    if (bucketType === "save" && options.goalId) {
+      const distributionResult = distributeSaveBucketToGoals(childProfileId, options.goalId);
+      if (!distributionResult.ok) {
+        childProfile.unassignedMoney += amount;
+        bucket.balance -= amount;
+        state.transactions.pop();
+        return distributionResult;
+      }
+
+      saveState();
+      return {
+        ok: true,
+        completedGoals: distributionResult.completedGoals,
+        appliedTransactions: distributionResult.appliedTransactions,
+        overflow: distributionResult.overflow,
+      };
+    }
+
+    saveState();
+    return { ok: true, completedGoals: [], appliedTransactions: [], overflow: 0 };
+  }
+
+  function distributeSaveBucketToGoals(childProfileId, startingGoalId) {
+    const saveBucket = getRawBucketByType(childProfileId, "save");
+    const selectedGoal = getRawGoalById(startingGoalId);
+
+    if (!saveBucket || !selectedGoal || selectedGoal.childProfileId !== childProfileId) {
       return { ok: false, error: "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
     }
 
     if (!isGoalActive(selectedGoal)) {
-      return { ok: false, error: "GOAL_COMPLETED", appliedTransactions: [], overflow: amount, completedGoals: [] };
+      return { ok: false, error: "GOAL_COMPLETED", appliedTransactions: [], overflow: saveBucket.balance, completedGoals: [] };
     }
 
-    if (amount > getChildUnassignedMoney(childProfileId)) {
-      return { ok: false, error: "INSUFFICIENT_POOL_FUNDS", appliedTransactions: [], overflow: amount, completedGoals: [] };
+    if (saveBucket.balance <= 0) {
+      return { ok: true, appliedTransactions: [], overflow: 0, completedGoals: [] };
     }
 
-    childProfile.unassignedMoney -= amount;
-
-    let remaining = amount;
-    const goalSequence = getActiveGoalsFromSelected(goalId);
+    let remaining = saveBucket.balance;
+    const goalSequence = getActiveGoalsFromSelected(startingGoalId);
     const appliedTransactions = [];
     const completedGoals = [];
 
@@ -581,6 +738,7 @@
       const applied = Math.min(remaining, space);
       goal.currentAmount += applied;
       remaining -= applied;
+      saveBucket.balance -= applied;
 
       if (applied > 0) {
         pushTransaction({
@@ -589,7 +747,7 @@
           bucketType: "save",
           type: "allocate",
           amount: applied,
-          label: "Goal allocation",
+          label: "Save goal funding",
         });
         appliedTransactions.push({ goalId: goal.id, amount: applied });
       }
@@ -601,18 +759,17 @@
       }
     });
 
-    if (remaining > 0) {
-      childProfile.unassignedMoney += remaining;
-    }
-
-    saveState();
-
     return {
       ok: true,
       appliedTransactions,
       overflow: remaining,
       completedGoals,
     };
+  }
+
+  function allocatePoolMoneyToGoal(childProfileId, goalId, amount) {
+    // Legacy/deprecated wrapper: prefer allocatePoolMoneyToBucket(childProfileId, "save", amount, { goalId }).
+    return allocatePoolMoneyToBucket(childProfileId, "save", amount, { goalId });
   }
 
   function addMoneyToGoals({ goalId, amount }) {
@@ -721,8 +878,13 @@
     getGoalById,
     getTransactionsForGoal,
     getChildSummary,
+    getChildMoneyWorld,
     getChildUnassignedMoney,
+    getBucketsForChild,
+    getBucketByType,
     addMoneyToPool,
+    allocatePoolMoneyToBucket,
+    distributeSaveBucketToGoals,
     allocatePoolMoneyToGoal,
     addGoalForActiveChild,
     updateGoal,

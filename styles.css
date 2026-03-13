@@ -430,3 +430,62 @@ h2 { text-align: center; margin: 4px 0 12px; font-size: 1.6rem; }
 #cross-goal-confirm-modal { z-index: 1200; }
 
 #insufficient-funds-modal { z-index: 1200; }
+
+.money-world-panel {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 16px;
+  border: 2px solid #dfe6ff;
+  background: #f7f9ff;
+}
+
+.money-world-title {
+  margin: 0 0 10px;
+  text-align: center;
+  color: #1E3A8A;
+}
+
+.money-world-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.money-world-card {
+  background: #ffffff;
+  border: 2px solid #dfe6ff;
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.money-world-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #4d5fa0;
+}
+
+.money-world-amount {
+  margin: 4px 0 0;
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #1b2559;
+}
+
+.money-world-save-goals {
+  margin-top: 8px;
+  border-top: 1px dashed #d7defd;
+  padding-top: 6px;
+}
+
+.money-world-goal-line {
+  margin: 4px 0;
+  font-size: 0.8rem;
+  color: #39467f;
+}
+
+.invest-helper-text {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #4f5d92;
+}

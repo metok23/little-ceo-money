@@ -175,6 +175,91 @@
     row.appendChild(openMoneyOutModalButton);
   }
 
+  function ensureMoneyWorldPanel() {
+    const existingPanel = document.getElementById("money-world-panel");
+    if (existingPanel || !activeGoalsTabPanel) {
+      return existingPanel;
+    }
+
+    const panel = document.createElement("section");
+    panel.id = "money-world-panel";
+    panel.className = "money-world-panel";
+
+    const heading = document.createElement("h3");
+    heading.className = "money-world-title";
+    heading.textContent = "🌍 Money World";
+
+    const grid = document.createElement("div");
+    grid.id = "money-world-grid";
+    grid.className = "money-world-grid";
+
+    const investHelper = document.createElement("p");
+    investHelper.id = "invest-helper-text";
+    investHelper.className = "invest-helper-text";
+    investHelper.textContent = "Lemon tree grows here soon";
+
+    panel.appendChild(heading);
+    panel.appendChild(grid);
+    panel.appendChild(investHelper);
+
+    activeGoalsTabPanel.insertBefore(panel, completedGoalsSection || goalsList);
+    return panel;
+  }
+
+  function renderMoneyWorldForActiveChild() {
+    const panel = ensureMoneyWorldPanel();
+    if (!panel) return;
+
+    const grid = panel.querySelector("#money-world-grid");
+    if (!grid) return;
+
+    const activeChild = window.AppState.getActiveChild();
+    if (!activeChild) {
+      panel.classList.add("hidden");
+      grid.innerHTML = "";
+      return;
+    }
+
+    const moneyWorld = window.AppState.getChildMoneyWorld(activeChild.id);
+    const goals = window.AppState.getGoalsForChild(activeChild.id).filter((goal) => goal.status === "active");
+
+    panel.classList.remove("hidden");
+    grid.innerHTML = `
+      <article class="money-world-card">
+        <p class="money-world-label">Pool / Ready to sort</p>
+        <p class="money-world-amount">$${moneyWorld.poolMoney}</p>
+      </article>
+      <article class="money-world-card">
+        <p class="money-world-label">Spend</p>
+        <p class="money-world-amount">$${moneyWorld.spendBucketBalance}</p>
+      </article>
+      <article class="money-world-card">
+        <p class="money-world-label">Save</p>
+        <p class="money-world-amount">$${moneyWorld.saveBucketBalance}</p>
+        <div class="money-world-save-goals">
+          ${
+            goals.length > 0
+              ? goals
+                  .map(
+                    (goal) =>
+                      `<p class="money-world-goal-line">${goal.icon || "🎯"} ${goal.name}: $${goal.currentAmount}/$${goal.targetAmount}</p>`
+                  )
+                  .join("")
+              : '<p class="money-world-goal-line">No active goals yet</p>'
+          }
+        </div>
+      </article>
+      <article class="money-world-card">
+        <p class="money-world-label">Invest</p>
+        <p class="money-world-amount">$${moneyWorld.investBucketBalance}</p>
+      </article>
+      <article class="money-world-card">
+        <p class="money-world-label">Donate</p>
+        <p class="money-world-amount">$${moneyWorld.donateBucketBalance}</p>
+      </article>
+    `;
+  }
+
   function setActiveTab(tabId) {
     const allowedTabs = Object.values(TAB_IDS);
     currentTab = allowedTabs.includes(tabId) ? tabId : TAB_IDS.activeGoals;
@@ -360,6 +445,7 @@
 
   function renderChildHome() {
     renderBalancesForActiveChild();
+    renderMoneyWorldForActiveChild();
     renderGoalsForActiveChild();
     setActiveTab(currentTab);
   }

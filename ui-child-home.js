@@ -322,7 +322,7 @@ ${goalOptions}`);
               ? goals
                   .map(
                     (goal) =>
-                      `<p class="money-world-goal-line">${goal.icon || "🎯"} ${goal.name}: $${goal.currentAmount}/$${goal.targetAmount}</p>`
+                      `<p class="money-world-goal-line">${goal.icon || "🎯"} ${goal.name}: $${goal.allocatedAmount}/$${goal.targetAmount}</p>`
                   )
                   .join("")
               : '<p class="money-world-goal-line">No active goals yet</p>'
@@ -390,7 +390,7 @@ ${goalOptions}`);
   }
 
   function createGoalCard(goal, { selected = false, archived = false } = {}) {
-    const percent = goal.targetAmount > 0 ? Math.min((goal.currentAmount / goal.targetAmount) * 100, 100) : 0;
+    const percent = goal.targetAmount > 0 ? Math.min((goal.allocatedAmount / goal.targetAmount) * 100, 100) : 0;
     const card = document.createElement("article");
     card.className = `goal-card ${selected ? "selected" : ""} ${archived ? "goal-card-completed" : ""}`.trim();
     card.dataset.goalId = goal.id;
@@ -412,7 +412,7 @@ ${goalOptions}`);
         </button>
         ${menuMarkup}
       </div>
-      <p class="money-line">$${goal.currentAmount} / $${goal.targetAmount}</p>
+      <p class="money-line">$${goal.allocatedAmount} / $${goal.targetAmount}</p>
       <div class="progress-track"><div class="progress-fill" style="width:${percent}%"></div></div>
       <p class="progress-text">${Math.round(percent)}% done</p>
     `;

@@ -87,6 +87,7 @@
         goalName: "Bike",
         targetAmount: 50,
         currentAmount: 0,
+        allocatedAmount: 0,
         status: "active",
         goalImage: "🚲",
         startDate: "2024-01-01",
@@ -98,6 +99,7 @@
         goalName: "Robot",
         targetAmount: 40,
         currentAmount: 0,
+        allocatedAmount: 0,
         status: "active",
         goalImage: "🤖",
         startDate: "2024-01-01",
@@ -156,7 +158,7 @@
       typeof goal.goalName === "string" &&
       goal.goalName &&
       Number.isFinite(goal.targetAmount) &&
-      Number.isFinite(goal.currentAmount) &&
+      (Number.isFinite(goal.allocatedAmount) || Number.isFinite(goal.currentAmount)) &&
       (goal.status === "active" || goal.status === "completed") &&
       typeof goal.goalImage === "string" &&
       typeof goal.startDate === "string" &&
@@ -238,14 +240,15 @@
       .filter((goal) => goal && typeof goal.id === "string" && goal.id && childProfileIds.has(goal.childId))
       .map((goal) => {
         const targetAmount = Number.isFinite(goal.targetAmount) && goal.targetAmount > 0 ? goal.targetAmount : 1;
-        const currentAmount = Number.isFinite(goal.currentAmount) ? Math.max(0, Math.min(goal.currentAmount, targetAmount)) : 0;
-        const status = goal.status === "completed" || currentAmount >= targetAmount ? "completed" : "active";
+        const allocatedAmount = Number.isFinite(goal.currentAmount) ? Math.max(0, Math.min(goal.currentAmount, targetAmount)) : 0;
+        const status = goal.status === "completed" || allocatedAmount >= targetAmount ? "completed" : "active";
         return {
           id: goal.id,
           childProfileId: goal.childId,
           goalName: typeof goal.name === "string" && goal.name ? goal.name : "Goal",
           targetAmount,
-          currentAmount,
+          allocatedAmount,
+          currentAmount: allocatedAmount,
           status,
           goalImage: typeof goal.icon === "string" ? goal.icon : "🎯",
           startDate: "",
@@ -325,10 +328,19 @@
       const goals = parsed.goals
         .filter(isValidGoal)
         .filter((goal) => childProfileIds.has(goal.childProfileId))
-        .map((goal) => ({
-          ...goal,
-          currentAmount: Math.max(0, Math.min(goal.currentAmount, goal.targetAmount)),
-        }));
+        .map((goal) => {
+          const rawAllocatedAmount = Number.isFinite(goal.allocatedAmount)
+            ? goal.allocatedAmount
+            : Number.isFinite(goal.currentAmount)
+              ? goal.currentAmount
+              : 0;
+          const allocatedAmount = Math.max(0, Math.min(rawAllocatedAmount, goal.targetAmount));
+          return {
+            ...goal,
+            allocatedAmount,
+            currentAmount: allocatedAmount,
+          };
+        });
 
       const goalIds = new Set(goals.map((goal) => goal.id));
       const goalChildMap = new Map(goals.map((goal) => [goal.id, goal.childProfileId]));
@@ -412,7 +424,8 @@
       icon: goal.goalImage,
       goalImage: goal.goalImage,
       targetAmount: goal.targetAmount,
-      currentAmount: goal.currentAmount,
+      allocatedAmount: getGoalAllocatedAmount(goal),
+      currentAmount: getGoalAllocatedAmount(goal),
       status: goal.status,
       startDate: goal.startDate,
       endDate: goal.endDate,
@@ -498,6 +511,13 @@
     return goal && goal.status === "active";
   }
 
+  function getGoalAllocatedAmount(goal) {
+    if (!goal) return 0;
+    if (Number.isFinite(goal.allocatedAmount)) return Math.max(0, goal.allocatedAmount);
+    if (Number.isFinite(goal.currentAmount)) return Math.max(0, goal.currentAmount);
+    return 0;
+  }
+
   function getActiveGoalsFromSelected(goalId) {
     const selectedGoal = getRawGoalById(goalId);
     if (!selectedGoal || !isGoalActive(selectedGoal)) return [];
@@ -557,7 +577,7 @@
 
     const goalsBalance = state.goals
       .filter((goal) => goal.childProfileId === childProfileId)
-      .reduce((sum, goal) => sum + goal.currentAmount, 0);
+      .reduce((sum, goal) => sum + getGoalAllocatedAmount(goal), 0);
 
     const totalBalance = poolMoney + buckets.spend + buckets.save + buckets.invest + buckets.donate;
 
@@ -602,6 +622,7 @@
       childProfileId: activeChild.id,
       goalName: name,
       targetAmount,
+      allocatedAmount: 0,
       currentAmount: 0,
       status: "active",
       goalImage: icon || "🎯",
@@ -621,12 +642,15 @@
     if (typeof updates.name === "string" && updates.name.trim()) goal.goalName = updates.name.trim();
     if (Number.isInteger(updates.targetAmount) && updates.targetAmount > 0) {
       goal.targetAmount = updates.targetAmount;
-      goal.currentAmount = Math.min(goal.currentAmount, goal.targetAmount);
+      const allocatedAmount = getGoalAllocatedAmount(goal);
+      goal.allocatedAmount = Math.min(allocatedAmount, goal.targetAmount);
+      goal.currentAmount = goal.allocatedAmount;
     }
     if (typeof updates.icon === "string" && updates.icon.trim()) goal.goalImage = updates.icon.trim();
 
-    if (goal.status === "active" && goal.currentAmount >= goal.targetAmount) {
-      goal.currentAmount = goal.targetAmount;
+    if (goal.status === "active" && getGoalAllocatedAmount(goal) >= goal.targetAmount) {
+      goal.allocatedAmount = goal.targetAmount;
+      goal.currentAmount = goal.allocatedAmount;
       goal.status = "completed";
     }
 
@@ -687,7 +711,7 @@
     });
 
     if (bucketType === "save" && options.goalId) {
-      const distributionResult = distributeSaveBucketToGoals(childProfileId, options.goalId);
+      const distributionResult = distributeSaveBucketToGoals(childProfileId, options.goalId, amount);
       if (!distributionResult.ok) {
         childProfile.unassignedMoney += amount;
         bucket.balance -= amount;
@@ -708,23 +732,25 @@
     return { ok: true, completedGoals: [], appliedTransactions: [], overflow: 0 };
   }
 
-  function distributeSaveBucketToGoals(childProfileId, startingGoalId) {
+  function distributeSaveBucketToGoals(childProfileId, startingGoalId, amountToDistribute) {
     const saveBucket = getRawBucketByType(childProfileId, "save");
     const selectedGoal = getRawGoalById(startingGoalId);
 
-    if (!saveBucket || !selectedGoal || selectedGoal.childProfileId !== childProfileId) {
+    if (
+      !saveBucket ||
+      !selectedGoal ||
+      selectedGoal.childProfileId !== childProfileId ||
+      !Number.isInteger(amountToDistribute) ||
+      amountToDistribute <= 0
+    ) {
       return { ok: false, error: "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
     }
 
     if (!isGoalActive(selectedGoal)) {
-      return { ok: false, error: "GOAL_COMPLETED", appliedTransactions: [], overflow: saveBucket.balance, completedGoals: [] };
+      return { ok: false, error: "GOAL_COMPLETED", appliedTransactions: [], overflow: amountToDistribute, completedGoals: [] };
     }
 
-    if (saveBucket.balance <= 0) {
-      return { ok: true, appliedTransactions: [], overflow: 0, completedGoals: [] };
-    }
-
-    let remaining = saveBucket.balance;
+    let remaining = amountToDistribute;
     const goalSequence = getActiveGoalsFromSelected(startingGoalId);
     const appliedTransactions = [];
     const completedGoals = [];
@@ -732,11 +758,13 @@
     goalSequence.forEach((goal) => {
       if (remaining <= 0) return;
 
-      const space = Math.max(0, goal.targetAmount - goal.currentAmount);
+      const allocatedAmount = getGoalAllocatedAmount(goal);
+      const space = Math.max(0, goal.targetAmount - allocatedAmount);
       if (space <= 0) return;
 
       const applied = Math.min(remaining, space);
-      goal.currentAmount += applied;
+      goal.allocatedAmount = allocatedAmount + applied;
+      goal.currentAmount = goal.allocatedAmount;
       remaining -= applied;
       saveBucket.balance -= applied;
 
@@ -752,8 +780,9 @@
         appliedTransactions.push({ goalId: goal.id, amount: applied });
       }
 
-      if (goal.currentAmount >= goal.targetAmount) {
-        goal.currentAmount = goal.targetAmount;
+      if (goal.allocatedAmount >= goal.targetAmount) {
+        goal.allocatedAmount = goal.targetAmount;
+        goal.currentAmount = goal.allocatedAmount;
         goal.status = "completed";
         completedGoals.push(goal.id);
       }
@@ -798,8 +827,8 @@
     }
 
     const goalSequence = getActiveGoalsForWithdrawal(goalId);
-    const selectedGoalBalance = selectedGoal.currentAmount;
-    const availableTotal = goalSequence.reduce((sum, goal) => sum + goal.currentAmount, 0);
+    const selectedGoalBalance = getGoalAllocatedAmount(selectedGoal);
+    const availableTotal = goalSequence.reduce((sum, goal) => sum + getGoalAllocatedAmount(goal), 0);
 
     if (amount > availableTotal) {
       return { ok: false, error: "INSUFFICIENT_FUNDS", availableTotal };
@@ -815,10 +844,14 @@
     goalSequence.forEach((goal) => {
       if (remaining <= 0) return;
 
-      const deducted = Math.min(goal.currentAmount, remaining);
+      const deducted = Math.min(getGoalAllocatedAmount(goal), remaining);
       if (deducted <= 0) return;
 
-      goal.currentAmount -= deducted;
+      goal.allocatedAmount = Math.max(0, getGoalAllocatedAmount(goal) - deducted);
+      goal.currentAmount = goal.allocatedAmount;
+      if (goal.allocatedAmount < goal.targetAmount && goal.status === "completed") {
+        goal.status = "active";
+      }
       remaining -= deducted;
 
       pushTransaction({ childProfileId: goal.childProfileId, goalId: goal.id, bucketType: "save", type: "out", amount: deducted, label: "Money Out" });
@@ -840,7 +873,7 @@
       return { ok: false, justCompleted: false };
     }
 
-    const selectedGoalWasCompleted = selectedGoal.currentAmount >= selectedGoal.targetAmount;
+    const selectedGoalWasCompleted = getGoalAllocatedAmount(selectedGoal) >= selectedGoal.targetAmount;
     let result;
 
     if (type === "in") {
@@ -862,7 +895,7 @@
         type === "in" &&
         !selectedGoalWasCompleted &&
         selectedGoalAfter &&
-        selectedGoalAfter.currentAmount >= selectedGoalAfter.targetAmount,
+        getGoalAllocatedAmount(selectedGoalAfter) >= selectedGoalAfter.targetAmount,
       childName: childProfile ? childProfile.childName : "",
       goalName: selectedGoal.goalName,
     };

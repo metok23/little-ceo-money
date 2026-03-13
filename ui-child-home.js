@@ -211,6 +211,34 @@
     return panel;
   }
 
+  function attachBucketInteractions(grid, activeChild) {
+    if (!grid || !activeChild) return;
+
+    grid.querySelectorAll("[data-bucket]").forEach((card) => {
+      card.addEventListener("click", () => {
+        const bucketType = card.dataset.bucket;
+        const amountRaw = prompt(`Move money to ${bucketType}. How much?`);
+
+        if (!/^\d+$/.test(amountRaw || "")) return;
+
+        const amount = Number(amountRaw);
+
+        const result = window.AppState.allocatePoolMoneyToBucket(
+          activeChild.id,
+          bucketType,
+          amount
+        );
+
+        if (!result.ok) {
+          alert("Not enough money in Pool");
+          return;
+        }
+
+        window.ChildHomeUI.renderChildHome();
+      });
+    });
+  }
+
   function renderMoneyWorldForActiveChild() {
     const panel = ensureMoneyWorldPanel();
     if (!panel) return;
@@ -234,11 +262,11 @@
         <p class="money-world-label">Pool / Ready to sort</p>
         <p class="money-world-amount">$${moneyWorld.poolMoney}</p>
       </article>
-      <article class="money-world-card">
+      <article class="money-world-card" data-bucket="spend">
         <p class="money-world-label">Spend</p>
         <p class="money-world-amount">$${moneyWorld.spendBucketBalance}</p>
       </article>
-      <article class="money-world-card">
+      <article class="money-world-card" data-bucket="save">
         <p class="money-world-label">Save</p>
         <p class="money-world-amount">$${moneyWorld.saveBucketBalance}</p>
         <div class="money-world-save-goals">
@@ -254,15 +282,17 @@
           }
         </div>
       </article>
-      <article class="money-world-card">
+      <article class="money-world-card" data-bucket="invest">
         <p class="money-world-label">Invest</p>
         <p class="money-world-amount">$${moneyWorld.investBucketBalance}</p>
       </article>
-      <article class="money-world-card">
+      <article class="money-world-card" data-bucket="donate">
         <p class="money-world-label">Donate</p>
         <p class="money-world-amount">$${moneyWorld.donateBucketBalance}</p>
       </article>
     `;
+
+    attachBucketInteractions(grid, activeChild);
   }
 
   function setActiveTab(tabId) {

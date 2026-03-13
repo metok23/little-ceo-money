@@ -217,6 +217,53 @@
     grid.querySelectorAll("[data-bucket]").forEach((card) => {
       card.addEventListener("click", () => {
         const bucketType = card.dataset.bucket;
+
+        if (bucketType === "save") {
+          const activeGoals = window.AppState
+            .getGoalsForChild(activeChild.id)
+            .filter((goal) => goal.status === "active");
+
+          if (activeGoals.length === 0) {
+            alert("Add a goal first");
+            return;
+          }
+
+          const amountRaw = prompt("Move money to save. How much?");
+          if (!/^\d+$/.test(amountRaw || "")) return;
+
+          const amount = Number(amountRaw);
+          const goalOptions = activeGoals.map((goal, index) => `${index + 1}. ${goal.name}`).join("\n");
+          const selectedGoalRaw = prompt(`Choose goal:
+${goalOptions}`);
+
+          if (!/^\d+$/.test(selectedGoalRaw || "")) return;
+
+          const selectedIndex = Number(selectedGoalRaw) - 1;
+          const selectedGoal = activeGoals[selectedIndex];
+          if (!selectedGoal) return;
+
+          const result = window.AppState.allocatePoolMoneyToBucket(
+            activeChild.id,
+            "save",
+            amount,
+            { goalId: selectedGoal.id }
+          );
+
+          if (!result.ok) {
+            if (result.error === "INSUFFICIENT_POOL_FUNDS") {
+              alert("Not enough money in Pool");
+            } else if (result.error === "GOAL_COMPLETED") {
+              alert("This goal is already completed");
+            } else {
+              alert("Something went wrong");
+            }
+            return;
+          }
+
+          window.ChildHomeUI.renderChildHome();
+          return;
+        }
+
         const amountRaw = prompt(`Move money to ${bucketType}. How much?`);
 
         if (!/^\d+$/.test(amountRaw || "")) return;

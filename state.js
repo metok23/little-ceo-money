@@ -945,6 +945,7 @@
     getChildUnassignedMoney,
     getBucketsForChild,
     getBucketByType,
+    getRawBucketByType,
     addMoneyToPool,
     allocatePoolMoneyToBucket,
     distributeSaveBucketToGoals,

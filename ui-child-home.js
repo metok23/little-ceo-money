@@ -345,7 +345,7 @@ ${goalOptions}`);
     panel.classList.remove("hidden");
     grid.innerHTML = `
       <article class="money-world-card">
-        <p class="money-world-label">Pool / Ready to sort</p>
+        <p class="money-world-label">Ready to sort</p>
         <p class="money-world-amount">$${moneyWorld.poolMoney}</p>
       </article>
       <article class="money-world-card" data-bucket="spend">

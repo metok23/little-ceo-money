@@ -606,7 +606,7 @@
 
     return {
       totalBalance: moneyWorld.totalBalance,
-      activeBalance: moneyWorld.totalBalance,
+      activeBalance: moneyWorld.poolMoney,
       totalMoneyIn,
       totalMoneyOut,
       totalNetBalance: totalMoneyIn - totalMoneyOut,

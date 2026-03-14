@@ -219,6 +219,13 @@
         const bucketType = card.dataset.bucket;
 
         if (bucketType === "save") {
+          const moneyWorld = window.AppState.getChildMoneyWorld(activeChild.id);
+
+          if (moneyWorld.poolMoney === 0 && moneyWorld.saveBucketBalance === 0) {
+            alert("No money in Pool or Save");
+            return;
+          }
+
           const activeGoals = window.AppState
             .getGoalsForChild(activeChild.id)
             .filter((goal) => goal.status === "active");
@@ -228,40 +235,72 @@
             return;
           }
 
-          const amountRaw = prompt("Move money to save. How much?");
-          if (!/^\d+$/.test(amountRaw || "")) return;
+          if (moneyWorld.poolMoney > 0) {
+            const amountRaw = prompt("Move money to save. How much?");
+            if (!/^\d+$/.test(amountRaw || "")) return;
 
-          const amount = Number(amountRaw);
-          const goalOptions = activeGoals.map((goal, index) => `${index + 1}. ${goal.name}`).join("\n");
-          const selectedGoalRaw = prompt(`Choose goal:
+            const amount = Number(amountRaw);
+            const goalOptions = activeGoals.map((goal, index) => `${index + 1}. ${goal.name}`).join("\n");
+            const selectedGoalRaw = prompt(`Choose goal:
 ${goalOptions}`);
+            if (!/^\d+$/.test(selectedGoalRaw || "")) return;
 
-          if (!/^\d+$/.test(selectedGoalRaw || "")) return;
+            const selectedIndex = Number(selectedGoalRaw) - 1;
+            const selectedGoal = activeGoals[selectedIndex];
+            if (!selectedGoal) return;
 
-          const selectedIndex = Number(selectedGoalRaw) - 1;
-          const selectedGoal = activeGoals[selectedIndex];
-          if (!selectedGoal) return;
+            const result = window.AppState.allocatePoolMoneyToBucket(
+              activeChild.id,
+              "save",
+              amount,
+              { goalId: selectedGoal.id }
+            );
 
-          const result = window.AppState.allocatePoolMoneyToBucket(
-            activeChild.id,
-            "save",
-            amount,
-            { goalId: selectedGoal.id }
-          );
-
-          if (!result.ok) {
-            if (result.error === "INSUFFICIENT_POOL_FUNDS") {
-              alert("Not enough money in Pool");
-            } else if (result.error === "GOAL_COMPLETED") {
-              alert("This goal is already completed");
-            } else {
-              alert("Something went wrong");
+            if (!result.ok) {
+              if (result.error === "INSUFFICIENT_POOL_FUNDS") {
+                alert("Not enough money in Pool");
+              } else if (result.error === "GOAL_COMPLETED") {
+                alert("This goal is already completed");
+              } else {
+                alert("Something went wrong");
+              }
+              return;
             }
+
+            window.ChildHomeUI.renderChildHome();
             return;
           }
 
-          window.ChildHomeUI.renderChildHome();
-          return;
+          if (moneyWorld.poolMoney === 0 && moneyWorld.saveBucketBalance > 0) {
+            const amountRaw = prompt("Use money from Save for goal. How much?");
+            if (!/^\d+$/.test(amountRaw || "")) return;
+
+            const amount = Number(amountRaw);
+            const goalOptions = activeGoals.map((goal, index) => `${index + 1}. ${goal.name}`).join("\n");
+            const selectedGoalRaw = prompt(`Choose goal:
+${goalOptions}`);
+            if (!/^\d+$/.test(selectedGoalRaw || "")) return;
+
+            const selectedIndex = Number(selectedGoalRaw) - 1;
+            const selectedGoal = activeGoals[selectedIndex];
+            if (!selectedGoal) return;
+
+            const result = window.AppState.useSaveBucketForGoal(activeChild.id, selectedGoal.id, amount);
+
+            if (!result.ok) {
+              if (result.error === "INSUFFICIENT_SAVE_FUNDS") {
+                alert("Not enough money in Save");
+              } else if (result.error === "GOAL_COMPLETED") {
+                alert("This goal is already completed");
+              } else {
+                alert("Something went wrong");
+              }
+              return;
+            }
+
+            window.ChildHomeUI.renderChildHome();
+            return;
+          }
         }
 
         const amountRaw = prompt(`Move money to ${bucketType}. How much?`);

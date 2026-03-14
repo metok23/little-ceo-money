@@ -796,6 +796,36 @@
     };
   }
 
+
+  function useSaveBucketForGoal(childProfileId, goalId, amount) {
+    const saveBucket = getRawBucketByType(childProfileId, "save");
+    const goal = getRawGoalById(goalId);
+
+    if (
+      !saveBucket ||
+      !goal ||
+      goal.childProfileId !== childProfileId ||
+      !Number.isInteger(amount) ||
+      amount <= 0
+    ) {
+      return { ok: false, error: "INVALID_INPUT" };
+    }
+
+    if (!isGoalActive(goal)) {
+      return { ok: false, error: "GOAL_COMPLETED" };
+    }
+
+    if (amount > saveBucket.balance) {
+      return { ok: false, error: "INSUFFICIENT_SAVE_FUNDS" };
+    }
+
+    const result = distributeSaveBucketToGoals(childProfileId, goalId, amount);
+    if (result.ok) {
+      saveState();
+    }
+    return result;
+  }
+
   function allocatePoolMoneyToGoal(childProfileId, goalId, amount) {
     // Legacy/deprecated wrapper: prefer allocatePoolMoneyToBucket(childProfileId, "save", amount, { goalId }).
     return allocatePoolMoneyToBucket(childProfileId, "save", amount, { goalId });
@@ -918,6 +948,7 @@
     addMoneyToPool,
     allocatePoolMoneyToBucket,
     distributeSaveBucketToGoals,
+    useSaveBucketForGoal,
     allocatePoolMoneyToGoal,
     addGoalForActiveChild,
     updateGoal,

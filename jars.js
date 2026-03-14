@@ -66,6 +66,100 @@
     constructor(stateApi, childProfileId) {
       super(stateApi, childProfileId, "save");
     }
+
+    depositFromPool(amount) {
+      return this.deposit(amount);
+    }
+
+    distributeToGoals(startingGoalId, amountToDistribute) {
+      const saveBucket = this.getBucket();
+      const selectedGoal = this.stateApi.getRawGoalById(startingGoalId);
+
+      if (
+        !saveBucket ||
+        !selectedGoal ||
+        selectedGoal.childProfileId !== this.childProfileId ||
+        !this.validateAmount(amountToDistribute)
+      ) {
+        return { ok: false, error: "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
+      }
+
+      if (selectedGoal.status !== "active") {
+        return { ok: false, error: "GOAL_COMPLETED", appliedTransactions: [], overflow: amountToDistribute, completedGoals: [] };
+      }
+
+      let remaining = amountToDistribute;
+      const goalSequence = this.stateApi.getActiveGoalsFromSelected(startingGoalId);
+      const appliedTransactions = [];
+      const completedGoals = [];
+
+      goalSequence.forEach((goal) => {
+        if (remaining <= 0) return;
+
+        const allocatedAmount = this.stateApi.getGoalAllocatedAmount(goal);
+        const space = Math.max(0, goal.targetAmount - allocatedAmount);
+        if (space <= 0) return;
+
+        const applied = Math.min(remaining, space);
+        goal.allocatedAmount = allocatedAmount + applied;
+        goal.currentAmount = goal.allocatedAmount;
+        saveBucket.balance -= applied;
+        remaining -= applied;
+
+        if (applied > 0) {
+          this.stateApi.pushTransaction({
+            childProfileId: goal.childProfileId,
+            goalId: goal.id,
+            bucketType: "save",
+            type: "allocate",
+            amount: applied,
+            label: "Save goal funding",
+          });
+          appliedTransactions.push({ goalId: goal.id, amount: applied });
+        }
+
+        if (goal.allocatedAmount >= goal.targetAmount) {
+          goal.allocatedAmount = goal.targetAmount;
+          goal.currentAmount = goal.allocatedAmount;
+          goal.status = "completed";
+          completedGoals.push(goal.id);
+        }
+      });
+
+      return {
+        ok: true,
+        appliedTransactions,
+        overflow: remaining,
+        completedGoals,
+      };
+    }
+
+    allocateFromPoolToGoal(amount, goalId) {
+      const depositResult = this.depositFromPool(amount);
+      if (!depositResult.ok) {
+        return { ok: false, error: depositResult.error || "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
+      }
+
+      const distributionResult = this.distributeToGoals(goalId, amount);
+      if (!distributionResult.ok) {
+        this.withdraw(amount);
+        return distributionResult;
+      }
+
+      return distributionResult;
+    }
+
+    useExistingSaveForGoal(goalId, amount) {
+      if (!this.validateAmount(amount)) {
+        return { ok: false, error: "INVALID_INPUT", appliedTransactions: [], overflow: 0, completedGoals: [] };
+      }
+
+      if (amount > this.getBalance()) {
+        return { ok: false, error: "INSUFFICIENT_SAVE_FUNDS" };
+      }
+
+      return this.distributeToGoals(goalId, amount);
+    }
   }
 
   class InvestJar extends BaseJar {

@@ -662,9 +662,34 @@ ${goalOptions}`);
       if (!/^\d+$/.test(raw)) return;
 
       const amount = Number(raw);
-      if (!Number.isInteger(amount) || amount <= 0 || !selectedGoalId) return;
+        // to dodałam samodzielnie
+      if (!Number.isInteger(amount) || amount <= 0) return;
+      if (transactionMode === "out" && !selectedGoalId) return;
+       // koniec dodania
+      
+        // początek dodania obsługi Money in
+if (transactionMode === "in") {
+  const activeChild = window.AppState.getActiveChild();
+  if (!activeChild) return;
 
-      const result = window.AppState.addTransaction({ goalId: selectedGoalId, type: transactionMode, amount });
+  const result = window.AppState.addMoneyToPool(activeChild.id, amount, "Money In");
+
+  if (!result.ok) {
+    openInfoModal("Error", "Could not add money.");
+    return;
+  }
+
+  closeTransactionModal();
+  onStateChange();
+  return;
+}
+        // koniec dodania obsługi Money in
+      
+      const result = window.AppState.addTransaction({ 
+        goalId: selectedGoalId, 
+        type: transactionMode, 
+        amount 
+      });
 
       if (!result.ok) {
         if (result.error === "INSUFFICIENT_FUNDS") {
